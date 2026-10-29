@@ -2,6 +2,7 @@
 
 const video = document.getElementById("camera-view");
 const canvas = document.getElementById("final-canvas");
+const canvasWrap3 = document.getElementById("canvas-wrapper-3");
 const ctx = canvas.getContext("2d");
 const startBtn = document.getElementById("start-btn");
 const startBtnLabel = document.getElementById("start-btn-label");
@@ -193,6 +194,7 @@ function goToStage(num) {
             canvasHolder.insertBefore(canvas, canvasHolder.firstChild);
         }
         renderStudio();
+        fitStripPreview();
     }
 
     if (num === 4) {
@@ -200,7 +202,38 @@ function goToStage(num) {
         if (printEasel && canvas.parentElement !== printEasel) {
             printEasel.appendChild(canvas);
         }
+        canvas.style.width = "";
+        canvas.style.height = "";
+        if (canvasWrap3) canvasWrap3.style.width = "";
     }
+}
+
+function fitStripPreview() {
+    if (!canvas || !canvasWrap3 || canvas.parentElement !== canvasWrap3) return;
+    const easel = canvasWrap3.parentElement;
+    if (!easel) return;
+
+    canvas.style.width = "";
+    canvas.style.height = "";
+    canvasWrap3.style.width = "";
+
+    const availW = easel.clientWidth;
+    const availH = easel.clientHeight;
+    if (!availW || !availH) return;
+
+    const ratio = canvas.width / canvas.height;
+    let cssH = availH;
+    let cssW = cssH * ratio;
+    if (cssW > availW) {
+        cssW = availW;
+        cssH = cssW / ratio;
+    }
+    cssW = Math.floor(cssW);
+    cssH = Math.floor(cssH);
+
+    canvas.style.width = `${cssW}px`;
+    canvas.style.height = `${cssH}px`;
+    canvasWrap3.style.width = `${cssW}px`;
 }
 
 async function enumerateCameras() {
@@ -346,6 +379,8 @@ if (switchCameraBtn) {
 }
 
 window.addEventListener("resize", updateGuideDimensions);
+window.addEventListener("resize", fitStripPreview);
+window.addEventListener("orientationchange", () => setTimeout(fitStripPreview, 150));
 
 function updateCameraStatus(text, state) {
     if (!cameraStatusText || !cameraStatusPill) return;
@@ -491,6 +526,7 @@ startBtn.onclick = async () => {
     }
 
     startBtnLabel.innerText = `Capture Photo ${photosCaptured + 1} of 6`;
+    startBtn.disabled = false;
 };
 
 function buildSelectionGallery() {
@@ -578,6 +614,7 @@ function renderStudio() {
     buildPhotoTray();
     updateSlotOverlayUI();
     renderStrip();
+    fitStripPreview();
 }
 
 function updateSlotOverlayUI() {

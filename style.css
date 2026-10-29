@@ -1870,6 +1870,11 @@ body {
 }
 
 /* Studio view: flexible preview column */
+.strip-easel-inner {
+    width: auto;
+    align-self: center;
+}
+
 @media (max-width: 900px) {
     .studio-layout {
         overflow-y: auto;
@@ -1877,20 +1882,17 @@ body {
     }
 
     .studio-canvas-column {
-        height: auto;
-        min-height: 260px;
-        max-height: 55vh;
         flex: none;
-        overflow: visible;
+        height: min(56vh, 520px);
+        max-height: none;
+        min-height: 300px;
+        overflow: hidden;
     }
 
     .strip-easel,
     .strip-easel-inner {
-        overflow: visible;
-    }
-
-    #final-canvas {
-        max-height: calc(55vh - 80px);
+        overflow: hidden;
+        min-height: 0;
     }
 
     .studio-tool-column {
@@ -1908,8 +1910,8 @@ body {
 
 @media (max-width: 560px) {
     .studio-canvas-column {
-        min-height: 220px;
-        max-height: 48vh;
+        height: min(52vh, 460px);
+        min-height: 260px;
         padding: 40px 10px 12px;
     }
 
@@ -1924,10 +1926,6 @@ body {
 
     .tool-panel {
         padding: 12px;
-    }
-
-    #final-canvas {
-        max-height: calc(48vh - 70px);
     }
 
     .tray-caption {
@@ -1983,8 +1981,10 @@ body {
     .studio-canvas-column {
         width: 46%;
         max-width: 340px;
-        height: auto;
+        height: 100%;
+        min-height: 0;
         max-height: none;
+        padding-top: 42px;
     }
 
     .studio-layout {
