@@ -177,6 +177,9 @@ function goToStage(num) {
 
     if (num === 1) {
         initCameraStream();
+        const isComplete = capturedPhotos.length >= 6;
+        if (startBtn) startBtn.disabled = isComplete;
+        if (isComplete) startBtnLabel.innerText = "All 6 Photos Captured";
     } else {
         cancelPendingCountdown();
         if (video && video.srcObject) {
@@ -452,8 +455,10 @@ mirrorToggle.onclick = () => {
 
 startBtn.onclick = async () => {
     if (capturedPhotos.length >= 6 || countdownCanceled) return;
+    startBtn.disabled = true;
     if (!video || video.readyState < 2 || !video.videoWidth) {
         updateCameraStatus("Camera not ready", "warning");
+        startBtn.disabled = false;
         return;
     }
 
@@ -465,6 +470,7 @@ startBtn.onclick = async () => {
             countdownCanceled = false;
             if (hudShotCounter) hudShotCounter.innerText = `${capturedPhotos.length} of 6 Captured`;
             startBtnLabel.innerText = remainingStatusLabel();
+            startBtn.disabled = false;
             return;
         }
     }
