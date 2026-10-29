@@ -1,10 +1,5 @@
-/**
- * BITS Photobooth Controller
- * Commercial Kiosk Production Engine
- * Cavite State University
- */
 
-// Core DOM Elements
+
 const video = document.getElementById("camera-view");
 const canvas = document.getElementById("final-canvas");
 const ctx = canvas.getContext("2d");
@@ -36,7 +31,6 @@ const btnRetryCamera = document.getElementById("btn-retry-camera");
 const switchCameraBtn = document.getElementById("switch-camera-btn");
 const switchCameraLabel = document.getElementById("switch-camera-label");
 
-// Stage Navigation Controls
 const selectionGrid = document.getElementById("selection-grid");
 const confirmSelectionBtn = document.getElementById("confirm-selection-btn");
 const btnRetake = document.getElementById("btn-retake");
@@ -44,8 +38,12 @@ const btnBackToSelect = document.getElementById("btn-back-to-select");
 const btnNext3 = document.getElementById("btn-next-3");
 const btnBackToStudio = document.getElementById("btn-back-to-studio");
 const btnRestart = document.getElementById("btn-restart");
+const countdownBtn = document.getElementById("countdown-btn");
+const mirrorToggle = document.getElementById("mirror-toggle");
 
-// Studio Controls
+let countdownCanceled = false;
+let mirroringEnabled = true;
+
 const photoPool = document.getElementById("photo-pool");
 const activeSlotLabel = document.getElementById("active-slot-label");
 const slotHotspots = document.querySelectorAll(".slot-hotspot");
@@ -53,13 +51,12 @@ const slotHotspots = document.querySelectorAll(".slot-hotspot");
 const stageViews = document.querySelectorAll(".stage-view");
 const stepNodes = document.querySelectorAll(".step-node");
 
-// Application State
 let activeStream = null;
-let availableCameras = []; // List of videoinput MediaDeviceInfo
-let currentCameraIndex = 0; // Index into availableCameras
-let capturedPhotos = []; // Array of 6 snapshot canvases
-let selectedSlotIndices = [0, 1, 2]; // 3 indices pointing to chosen shots
-let activeReplacingSlot = 0; // Currently selected slot in studio (0, 1, or 2)
+let availableCameras = [];
+let currentCameraIndex = 0;
+let capturedPhotos = [];
+let selectedSlotIndices = [0, 1, 2];
+let activeReplacingSlot = 0;
 let currentFilter = "none";
 let currentFrameImg = document.querySelector(".frame-item.selected") || document.querySelector(".frame-item");
 
@@ -156,6 +153,7 @@ function goToStage(num) {
     if (num === 1) {
         initCameraStream();
     } else {
+        cancelPendingCountdown();
         if (video && video.srcObject) {
             video.pause();
         }
@@ -216,7 +214,7 @@ async function startCameraById(deviceId) {
             updateCameraStatus("Camera Ready", "ready");
             updateGuideDimensions();
         };
-        // Re-enumerate after first grant so labels are available
+
         await enumerateCameras();
     } catch (err) {
         console.error("Camera access failed:", err);
@@ -246,7 +244,7 @@ async function initCameraStream() {
         return;
     }
 
-    await startCameraById(null); // start with default, then enumerate
+    await startCameraById(null);
 }
 
 if (btnRetryCamera) {
@@ -283,7 +281,7 @@ if (switchCameraBtn) {
                 if (switchCameraLabel) switchCameraLabel.textContent = shortLabel;
                 closeDropdown();
                 await startCameraById(cam.deviceId);
-                buildCameraMenu(); // refresh active state
+                buildCameraMenu();
             };
             camMenu.appendChild(li);
         });
@@ -339,7 +337,6 @@ function updateGuideDimensions() {
     const rect = video.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) return;
 
-    // Slot standard aspect ratio: 0.923 (width / height)
     const slotRatio = 0.923;
     const paddingFactor = 0.88;
 
@@ -355,9 +352,6 @@ function updateGuideDimensions() {
     guideBox.style.height = `${Math.round(targetHeight)}px`;
 }
 
-// ==========================================================================
-// Snapshot & Session Operations
-// ==========================================================================
 function triggerFlash() {
     if (!flashEl) return;
     flashEl.style.opacity = "1";
@@ -372,19 +366,76 @@ function captureVideoFrame() {
     shotCanvas.height = video.videoHeight || 720;
     const tCtx = shotCanvas.getContext("2d");
 
-    // Flip horizontally to match live mirror feed
-    tCtx.translate(shotCanvas.width, 0);
-    tCtx.scale(-1, 1);
+    if (mirroringEnabled) {
+        tCtx.translate(shotCanvas.width, 0);
+        tCtx.scale(-1, 1);
+    }
     tCtx.drawImage(video, 0, 0, shotCanvas.width, shotCanvas.height);
     capturedPhotos.push(shotCanvas);
 }
 
-// Step 1: Capture one photo per click, then continue after the sixth shot.
-startBtn.onclick = () => {
-    if (capturedPhotos.length >= 6) return;
+async function countdownTick(seconds) {
+    const overlay = document.getElementById("countdown-overlay");
+    for (let s = seconds; s > 0; s--) {
+        if (countdownCanceled) return false;
+        if (overlay) overlay.textContent = s;
+        await new Promise((r) => setTimeout(r, 1000));
+    }
+    if (overlay) overlay.textContent = "";
+    return !countdownCanceled;
+}
+
+function resetCountdownButton() {
+    countdownCanceled = false;
+    countdownBtn.setAttribute("aria-pressed", "false");
+    const overlay = document.getElementById("countdown-overlay");
+    if (overlay) overlay.textContent = "";
+}
+
+function cancelPendingCountdown() {
+    countdownCanceled = true;
+}
+
+countdownBtn.onclick = () => {
+    countdownCanceled = false;
+    const enabled = countdownBtn.getAttribute("aria-pressed") !== "true";
+    countdownBtn.setAttribute("aria-pressed", String(enabled));
+    const overlay = document.getElementById("countdown-overlay");
+    if (!enabled && overlay) overlay.textContent = "";
+    if (startBtn && !startBtn.disabled && capturedPhotos.length < 6) {
+        startBtnLabel.innerText = remainingStatusLabel();
+    }
+};
+
+function remainingStatusLabel() {
+    const n = capturedPhotos.length;
+    if (n >= 6) return "All 6 Photos Captured";
+    return `Capture Photo ${n + 1} of 6`;
+}
+
+mirrorToggle.onclick = () => {
+    mirroringEnabled = !mirroringEnabled;
+    mirrorToggle.setAttribute("aria-pressed", String(mirroringEnabled));
+    video.classList.toggle("no-mirror", !mirroringEnabled);
+};
+
+startBtn.onclick = async () => {
+    if (capturedPhotos.length >= 6 || countdownCanceled) return;
     if (!video || video.readyState < 2 || !video.videoWidth) {
         updateCameraStatus("Camera not ready", "warning");
         return;
+    }
+
+    if (countdownBtn.getAttribute("aria-pressed") === "true") {
+        if (!countdownBtn.disabled) countdownBtn.disabled = true;
+        const ok = await countdownTick(3);
+        countdownBtn.disabled = false;
+        if (!ok) {
+            countdownCanceled = false;
+            if (hudShotCounter) hudShotCounter.innerText = `${capturedPhotos.length} of 6 Captured`;
+            startBtnLabel.innerText = remainingStatusLabel();
+            return;
+        }
     }
 
     triggerFlash();
@@ -405,12 +456,9 @@ startBtn.onclick = () => {
     startBtnLabel.innerText = `Capture Photo ${photosCaptured + 1} of 6`;
 };
 
-// ==========================================================================
-// Step 2: Photo Selection Gallery
-// ==========================================================================
 function buildSelectionGallery() {
     selectionGrid.innerHTML = "";
-    selectedSlotIndices = [0, 1, 2]; // Default select first 3
+    selectedSlotIndices = [0, 1, 2];
 
     capturedPhotos.forEach((photoCanvas, idx) => {
         const card = document.createElement("div");
@@ -435,13 +483,13 @@ function buildSelectionGallery() {
         card.onclick = () => {
             const foundIdx = selectedSlotIndices.indexOf(idx);
             if (foundIdx !== -1) {
-                // Deselect photo
+
                 selectedSlotIndices.splice(foundIdx, 1);
             } else {
                 if (selectedSlotIndices.length < 3) {
                     selectedSlotIndices.push(idx);
                 } else {
-                    // Shift FIFO to keep 3
+
                     selectedSlotIndices.shift();
                     selectedSlotIndices.push(idx);
                 }
@@ -481,6 +529,8 @@ btnRetake.onclick = () => {
     goToStage(1);
 };
 
+stopCountdownMode(false);
+
 confirmSelectionBtn.onclick = () => {
     if (selectedSlotIndices.length !== 3) {
         alert("Please select exactly 3 photos for your photobooth strip.");
@@ -489,9 +539,6 @@ confirmSelectionBtn.onclick = () => {
     goToStage(3);
 };
 
-// ==========================================================================
-// Step 3: Studio Customizer Engine
-// ==========================================================================
 function renderStudio() {
     buildPhotoTray();
     updateSlotOverlayUI();
@@ -596,7 +643,6 @@ function buildPhotoTray() {
     });
 }
 
-// Frame Selection Handling
 document.querySelectorAll("#frame-sidebar .frame-item").forEach((img) => {
     const choice = document.createElement("button");
     choice.type = "button";
@@ -624,7 +670,6 @@ document.querySelectorAll("#frame-sidebar .frame-item").forEach((img) => {
     };
 });
 
-// Filter Chips Handling
 document.querySelectorAll(".filter-chip").forEach((chip) => {
     chip.onclick = () => {
         document.querySelectorAll(".filter-chip").forEach((c) => c.classList.remove("active"));
@@ -634,13 +679,12 @@ document.querySelectorAll(".filter-chip").forEach((chip) => {
     };
 });
 
-// Multi-layer Photostrip Compositor
 function renderStrip() {
     if (selectedSlotIndices.length !== 3 || capturedPhotos.length < 3) return;
 
     const photosToRender = selectedSlotIndices.map((i) => capturedPhotos[i]);
     const w = 800;
-    const h = 2400; // Standard 3-slot photobooth vertical ratio
+    const h = 2400;
     canvas.width = w;
     canvas.height = h;
 
@@ -685,7 +729,6 @@ function renderStrip() {
     drawImageFit(currentFrameImg);
 }
 
-// Stage 3 & 4 Navigation Buttons
 btnBackToSelect.onclick = () => goToStage(2);
 btnNext3.onclick = () => goToStage(4);
 btnBackToStudio.onclick = () => goToStage(3);
@@ -696,15 +739,11 @@ btnRestart.onclick = () => {
     location.reload();
 };
 
-// ==========================================================================
-// Step 4: High Resolution Print & Download
-// ==========================================================================
 downloadBtn.onclick = () => {
     const printCanvas = document.createElement("canvas");
     const printCtx = printCanvas.getContext("2d");
     const gap = 4;
 
-    // Generates 2 strips side-by-side (Authentic 4x6" photobooth standard)
     printCanvas.width = canvas.width * 2 + gap;
     printCanvas.height = canvas.height;
 
@@ -772,7 +811,6 @@ sendEmailBtn.onclick = async () => {
     }
 };
 
-// Auto-start camera on page ready
 window.addEventListener("DOMContentLoaded", () => {
     initCameraStream();
 });

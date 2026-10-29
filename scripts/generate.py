@@ -3,15 +3,12 @@ import re
 with open('index.html', 'r') as f:
     original = f.read()
 
-# Extract frames
 frames_match = re.search(r'<div class="sidebar-frames" id="frame-sidebar">.*?<p[^>]*>SELECT FRAME</p>(.*?)</div>', original, re.DOTALL)
 frames_html = frames_match.group(1).strip() if frames_match else ""
 
-# Extract preload layers
 preloads_match = re.search(r'<!-- Preload Layer for sandwiching -->(.*?)<div class="viewport">', original, re.DOTALL)
 preloads_html = preloads_match.group(1).strip() if preloads_match else ""
 
-# Extract filters
 filters_match = re.search(r'<div id="filter-container">(.*?)</div>', original, re.DOTALL)
 filters_html = filters_match.group(1).strip() if filters_match else ""
 
@@ -94,7 +91,7 @@ new_html = f"""<!DOCTYPE html>
     function goToScreen(num) {{
         screens.forEach((s, i) => s.classList.toggle('active', i + 1 === num));
         steps.forEach((s, i) => s.classList.toggle('active', i + 1 <= num));
-        
+
         if (num === 2) {{
             window.dispatchEvent(new Event('resize'));
         }}

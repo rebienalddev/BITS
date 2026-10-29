@@ -22,8 +22,6 @@ app.use(cors());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.static(path.join(__dirname)));
 
-// POST /api/send-email
-// Body: { email: string, imageBase64: string }
 app.post("/api/send-email", async (req, res) => {
     const { email, imageBase64 } = req.body || {};
 
@@ -72,10 +70,10 @@ app.post("/api/send-email", async (req, res) => {
                         <p style="color: #888; font-size: 14px; margin: 0;">From BITS Photobooth - Cavite State University</p>
                     </div>
                     <p style="color: #ccc; font-size: 14px; line-height: 1.7; margin: 0 0 24px;">
-                        Thank you for using BITS Photobooth! 
+                        Thank you for using BITS Photobooth!
                     </p>
                     <p style="color: #888; font-size: 12px; margin: 0; text-align: center;">
-                        Download and print your strip or keep it as a digital memory. 
+                        Download and print your strip or keep it as a digital memory.
                     </p>
                 </div>
             `,

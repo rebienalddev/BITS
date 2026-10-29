@@ -3,15 +3,12 @@ import re
 with open('index.html', 'r') as f:
     original = f.read()
 
-# Extract frames
 frames_match = re.search(r'<div class="frame-grid" id="frame-sidebar">(.*?)</div>', original, re.DOTALL)
 frames_html = frames_match.group(1).strip() if frames_match else ""
 
-# Extract preload layers
 preloads_match = re.search(r'<div style="display:none;">(.*?)</div>', original, re.DOTALL)
 preloads_html = preloads_match.group(1).strip() if preloads_match else ""
 
-# Extract filters
 filters_match = re.search(r'<div id="filter-container">(.*?)</div>', original, re.DOTALL)
 filters_html = filters_match.group(1).strip() if filters_match else ""
 
@@ -36,7 +33,6 @@ new_html = f"""<!DOCTYPE html>
 </header>
 
 <div class="screens-wrapper">
-    <!-- SCREEN 1: Frame Selection -->
     <div class="screen active" id="screen-1">
         <div class="screen-header">
             <h2 class="screen-title">Choose Your Frame</h2>
@@ -52,7 +48,6 @@ new_html = f"""<!DOCTYPE html>
         </div>
     </div>
 
-    <!-- SCREEN 2: Camera -->
     <div class="screen" id="screen-2">
         <div class="screen-header">
             <h2 class="screen-title">Strike a Pose!</h2>
@@ -69,7 +64,6 @@ new_html = f"""<!DOCTYPE html>
         </div>
     </div>
 
-    <!-- SCREEN 3: Filters -->
     <div class="screen" id="screen-3">
         <div class="screen-header">
             <h2 class="screen-title">Apply a Filter</h2>
@@ -88,14 +82,12 @@ new_html = f"""<!DOCTYPE html>
         </div>
     </div>
 
-    <!-- SCREEN 4: Preview & Download -->
     <div class="screen" id="screen-4">
         <div class="screen-header">
             <h2 class="screen-title">Your Photos are Ready!</h2>
             <p class="screen-subtitle">Save your strip or start a new session.</p>
         </div>
         <div class="final-workspace" id="canvas-wrapper-4">
-            <!-- Canvas moved here -->
         </div>
         <div class="action-bar" style="gap: 20px;">
             <button id="download-btn" class="btn" style="display:none;">Save Jpeg</button>
@@ -104,7 +96,6 @@ new_html = f"""<!DOCTYPE html>
     </div>
 </div>
 
-<!-- SELECTION MODAL -->
 <div id="selection-screen">
     <div class="selection-modal">
         <h3>Select Your Best 3 Photos</h3>
@@ -127,7 +118,7 @@ new_html = f"""<!DOCTYPE html>
     function goToScreen(num) {{
         screens.forEach((s, i) => s.classList.toggle('active', i + 1 === num));
         steps.forEach((s, i) => s.classList.toggle('active', i + 1 <= num));
-        
+
         if (num === 2) {{
             window.dispatchEvent(new Event('resize'));
         }}

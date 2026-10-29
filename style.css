@@ -1,20 +1,14 @@
-/* ==========================================================================
-   BITS PHOTOBOOTH - SOLID GRAYSCALE PALETTE SYSTEM
-   Cavite State University
-   Specifications:
-   - SOLID COLORS ONLY (NO GRADIENTS ANYWHERE).
-   - Black, white, and soft neutral grays only.
-   ========================================================================== */
+
 
 :root {
-    /* Solid Colors - Grayscale */
+    
     --color-bg-base: #ffffff;
     --color-bg-surface: #f7f7f7;
     --color-bg-surface-elevated: #eeeeee;
     --color-bg-surface-hover: #e3e3e3;
     --color-bg-card: #ffffff;
 
-    /* Neutral selection shades */
+    
     --color-accent: #1e371e;
     --color-accent-hover: #294b2d;
     --color-accent-active: #142916;
@@ -31,23 +25,22 @@
     --color-border-highlight: #929292;
     --color-border-accent: #1e371e;
 
-    /* Radii */
+    
     --radius-xs: 6px;
     --radius-sm: 10px;
     --radius-md: 14px;
     --radius-lg: 18px;
     --radius-full: 9999px;
 
-    /* Motion */
+    
     --transition-fast: 0.15s ease;
     --transition-normal: 0.25s ease;
 
-    /* Typography */
+    
     --font-heading: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, sans-serif;
     --font-mono: "Space Grotesk", monospace;
 }
 
-/* CSS Reset */
 *,
 *::before,
 *::after {
@@ -68,7 +61,6 @@ body {
     -moz-osx-font-smoothing: grayscale;
 }
 
-/* Base App Shell - Pure Solid Color */
 .app-shell {
     display: flex;
     flex-direction: column;
@@ -77,9 +69,6 @@ body {
     background-color: var(--color-bg-base);
 }
 
-/* ==========================================================================
-   Header & Stepper Navigation
-   ========================================================================== */
 .app-header {
     height: 64px;
     padding: 0 32px;
@@ -136,7 +125,6 @@ body {
     text-transform: uppercase;
 }
 
-/* Stepper Component */
 .stepper-nav {
     display: flex;
     align-items: center;
@@ -225,7 +213,6 @@ body {
     background-color: var(--color-border-subtle);
 }
 
-/* Device Pill */
 .header-action-group {
     display: flex;
     align-items: center;
@@ -265,9 +252,6 @@ body {
     color: var(--color-text-secondary);
 }
 
-/* ==========================================================================
-   Main App Content
-   ========================================================================== */
 .app-content {
     flex: 1;
     position: relative;
@@ -291,7 +275,6 @@ body {
     z-index: 10;
 }
 
-/* Stage Intro Heading */
 .stage-intro {
     text-align: center;
     padding: 14px 20px 6px 20px;
@@ -313,7 +296,6 @@ body {
     font-weight: 500;
 }
 
-/* Stage Bottom Toolbar */
 .stage-toolbar {
     height: 72px;
     background-color: var(--color-bg-surface);
@@ -322,14 +304,40 @@ body {
     align-items: center;
     justify-content: center;
     gap: 16px;
-    padding: 0 24px;
+    padding: 8px 24px;
+    flex-wrap: wrap;
     flex-shrink: 0;
     z-index: 20;
 }
 
-/* ==========================================================================
-   Buttons - Solid Colors Only
-   ========================================================================== */
+.btn[aria-pressed="true"] {
+    background-color: var(--color-accent);
+    border-color: var(--color-accent);
+    color: var(--color-text-dark);
+}
+
+.btn-icon-only {
+    padding: 0 15px;
+}
+
+#countdown-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 120px;
+    font-weight: 800;
+    color: #fff;
+    text-shadow: 0 4px 24px rgba(0, 0, 0, 0.65);
+    z-index: 30;
+    pointer-events: none;
+    line-height: 1;
+}
+
+#camera-view.no-mirror {
+    transform: none;
+}
+
 .btn {
     height: 44px;
     padding: 0 24px;
@@ -393,9 +401,6 @@ body {
     flex-shrink: 0;
 }
 
-/* ==========================================================================
-   STEP 1: CAPTURE WORKSPACE
-   ========================================================================== */
 .capture-workspace {
     flex: 1;
     display: flex;
@@ -428,7 +433,6 @@ body {
     background-color: #000000;
 }
 
-/* Viewfinder Crop Guide Overlay */
 .crop-guide-container {
     position: absolute;
     inset: 0;
@@ -506,7 +510,6 @@ body {
     height: 12px;
 }
 
-/* HUD Badges */
 .hud-layer {
     position: absolute;
     top: 14px;
@@ -519,7 +522,6 @@ body {
     z-index: 10;
 }
 
-/* Camera Dropdown */
 .cam-dropdown-wrap {
     position: relative;
     pointer-events: all;
@@ -668,7 +670,6 @@ body {
     color: var(--color-accent);
 }
 
-/* Camera Fallback Banner */
 .camera-fallback {
     position: absolute;
     inset: 0;
@@ -702,9 +703,6 @@ body {
     line-height: 1.5;
 }
 
-/* ==========================================================================
-   STEP 2: SELECT WORKSPACE
-   ========================================================================== */
 .select-workspace {
     flex: 1;
     overflow-y: auto;
@@ -771,9 +769,6 @@ body {
     z-index: 2;
 }
 
-/* ==========================================================================
-   STEP 3: STUDIO CUSTOMIZER
-   ========================================================================== */
 .studio-layout {
     flex: 1;
     display: flex;
@@ -830,7 +825,6 @@ body {
     object-fit: contain;
 }
 
-/* Right Tool Sidebar */
 .studio-tool-column {
     flex: 1;
     overflow-y: auto;
@@ -879,7 +873,6 @@ body {
     text-transform: uppercase;
 }
 
-/* 6-Shot Tray */
 .tray-pool-grid {
     display: grid;
     grid-template-columns: repeat(6, 1fr);
@@ -930,7 +923,6 @@ body {
     border-radius: 3px;
 }
 
-/* Frame Scroll Rack */
 .frame-scroll-rack {
     display: flex;
     gap: 10px;
@@ -969,7 +961,6 @@ body {
     transform: scale(1.03);
 }
 
-/* Filters */
 .filter-tab-grid {
     display: flex;
     gap: 8px;
@@ -1000,9 +991,6 @@ body {
     font-weight: 700;
 }
 
-/* ==========================================================================
-   STEP 4: PRINT WORKSPACE
-   ========================================================================== */
 .print-workspace {
     flex: 1;
     display: flex;
@@ -1098,7 +1086,6 @@ body {
     color: #ff6b6b;
 }
 
-/* Flash Animation Element */
 #flash {
     position: fixed;
     inset: 0;
@@ -1108,7 +1095,6 @@ body {
     z-index: 9999;
 }
 
-/* Responsive */
 @media (max-width: 900px) {
     .app-header {
         height: 56px;
@@ -1141,7 +1127,6 @@ body {
     }
 }
 
-/* Studio hierarchy and frame navigation */
 .studio-canvas-column {
     position: relative;
     padding-top: 52px;
@@ -1296,7 +1281,6 @@ body {
     }
 }
 
-/* Minimal, calm interface refinements */
 :root {
     --radius-xs: 4px;
     --radius-sm: 6px;
@@ -1405,7 +1389,8 @@ body,
 }
 
 .stage-toolbar {
-    height: 64px;
+    height: auto;
+    min-height: 64px;
     background: var(--color-bg-base);
     border-top-color: var(--color-border-medium);
 }

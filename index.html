@@ -12,7 +12,7 @@
 <body>
 
 <div class="app-shell">
-    <!-- Compact, elegant application header -->
+    
     <header class="app-header">
         <div class="brand-group">
             <div class="brand-logo-frame">
@@ -24,7 +24,7 @@
             </div>
         </div>
 
-        <!-- 4-step progress stepper -->
+        
         <nav class="stepper-nav" aria-label="Photobooth workflow steps">
             <div class="step-node active" id="step-node-1">
                 <div class="step-indicator">
@@ -70,12 +70,11 @@
         </div>
     </header>
 
-    <!-- Main Screens Container -->
+    
     <main class="app-content">
 
-        <!-- ========================================================
-             STEP 1: CAPTURE SCREEN
-             ======================================================== -->
+        
+
         <section class="stage-view active" id="view-capture" aria-labelledby="heading-capture">
             <div class="stage-intro">
                 <h1 class="stage-title" id="heading-capture">Strike Your Pose</h1>
@@ -84,10 +83,10 @@
 
             <div class="capture-workspace">
                 <div class="viewport-card" id="camera-card">
-                    <!-- Live Camera Feed -->
+                    
                     <video id="camera-view" autoplay playsinline muted></video>
 
-                    <!-- Professional Proportional Crop Overlay -->
+                    
                     <div id="crop-guide" class="crop-guide-container">
                         <div class="guide-box">
                             <span class="corner-mark top-left"></span>
@@ -98,7 +97,7 @@
                         </div>
                     </div>
 
-                    <!-- Clean Camera HUD Badges -->
+                    
                     <div class="hud-layer">
                         <div class="hud-badge session-badge">
                             <span class="rec-indicator"></span>
@@ -122,13 +121,15 @@
                         </div>
                     </div>
 
-                    <!-- Graceful Error / Permissions Fallback Banner -->
+                    
                     <div id="camera-error-banner" class="camera-fallback" style="display:none;">
                         <div class="fallback-icon">&#9888;</div>
                         <h2 class="fallback-title">Camera Access Required</h2>
                         <p class="fallback-desc" id="camera-error-msg">Please grant browser permissions to your webcam to start your photobooth session.</p>
                         <button type="button" class="btn btn-secondary btn-sm" id="btn-retry-camera">Retry Connection</button>
                     </div>
+
+                    <div id="countdown-overlay" aria-live="assertive"></div>
                 </div>
             </div>
 
@@ -139,13 +140,26 @@
                     </svg>
                     <span id="start-btn-label">Capture Photo 1 of 6</span>
                 </button>
+                <button type="button" id="countdown-btn" class="btn btn-secondary btn-icon-only" aria-pressed="false" title="Countdown timer for each capture" aria-label="Toggle countdown timer">
+                    <svg class="btn-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="13" r="8"/>
+                        <path d="M12 9v4l2.5 2.5"/>
+                        <path d="M9 2h6"/>
+                    </svg>
+                </button>
+                <button type="button" id="mirror-toggle" class="btn btn-secondary btn-icon-only" aria-pressed="true" title="Toggle mirror preview" aria-label="Toggle mirror preview">
+                    <svg class="btn-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 3v18"/>
+                        <path d="M4 8c-1.5 2.5-1.5 5.5 0 8"/>
+                        <path d="M20 8c1.5 2.5 1.5 5.5 0 8"/>
+                        <path d="M8 5v14M16 5v14"/>
+                    </svg>
+                </button>
             </div>
         </section>
 
+        
 
-        <!-- ========================================================
-             STEP 2: SELECT SCREEN
-             ======================================================== -->
         <section class="stage-view" id="view-select" aria-labelledby="heading-select">
             <div class="stage-intro">
                 <h1 class="stage-title" id="heading-select">Select Your Best 3</h1>
@@ -168,13 +182,11 @@
             </div>
         </section>
 
+        
 
-        <!-- ========================================================
-             STEP 3: STUDIO CUSTOMIZER SCREEN
-             ======================================================== -->
         <section class="stage-view" id="view-studio" aria-labelledby="heading-studio">
             <div class="studio-layout">
-                <!-- Left: Live Photostrip Canvas Showcase -->
+                
                 <div class="studio-canvas-column">
                     <div class="studio-preview-header">
                         <strong>Strip preview</strong>
@@ -198,13 +210,13 @@
                     </div>
                 </div>
 
-                <!-- Right: Tool Suite Sidebar -->
+                
                 <aside class="studio-tool-column">
                     <div class="studio-sidebar-heading">
                         <h1>Customize your strip</h1>
                         <p>Your changes appear in the preview.</p>
                     </div>
-                    <!-- Drawer 1: Swap Photo into Selected Slot -->
+                    
                     <div class="tool-panel">
                         <div class="panel-header">
                             <div>
@@ -216,7 +228,7 @@
                         <div class="tray-pool-grid" id="photo-pool"></div>
                     </div>
 
-                    <!-- Drawer 2: Frame Templates -->
+                    
                     <div class="tool-panel">
                         <div class="panel-header">
                             <div>
@@ -242,7 +254,7 @@
                         </div>
                     </div>
 
-                    <!-- Drawer 3: Filter Presets -->
+                    
                     <div class="tool-panel">
                         <div class="panel-header">
                             <div>
@@ -274,10 +286,8 @@
             </div>
         </section>
 
+        
 
-        <!-- ========================================================
-             STEP 4: PRINT & DOWNLOAD SCREEN
-             ======================================================== -->
         <section class="stage-view" id="view-print" aria-labelledby="heading-print">
             <div class="stage-intro">
                 <h1 class="stage-title" id="heading-print">Your Photostrip Is Ready</h1>
@@ -286,10 +296,10 @@
 
             <div class="print-workspace">
                 <div class="print-easel" id="canvas-wrapper-4">
-                    <!-- Final Canvas mounted here dynamically -->
+                    
                 </div>
 
-                <!-- Email delivery card -->
+                
                 <div class="email-delivery-card">
                     <div class="email-card-header">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
@@ -325,7 +335,6 @@
 
 </div>
 
-<!-- Flash Animation Element -->
 <div id="flash" aria-hidden="true"></div>
 
 <script src="script.js"></script>
