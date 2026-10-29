@@ -180,8 +180,9 @@ async function enumerateCameras() {
         const devices = await navigator.mediaDevices.enumerateDevices();
         availableCameras = devices.filter((d) => d.kind === "videoinput");
         if (switchCameraBtn) {
-            switchCameraBtn.disabled = availableCameras.length <= 1;
-            switchCameraBtn.title = availableCameras.length <= 1 ? "No other cameras available" : "Switch Camera";
+            switchCameraBtn.disabled = availableCameras.length === 0;
+            switchCameraBtn.title =
+                availableCameras.length === 0 ? "No cameras detected" : availableCameras.length === 1 ? "Only one camera available" : "Switch Camera";
         }
     } catch (e) {
         console.warn("enumerateDevices failed:", e);
@@ -240,7 +241,12 @@ async function initCameraStream() {
     }
 
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        showCameraError("Webcam API is not supported by your browser or environment.");
+        const secure = window.isSecureContext !== false;
+        showCameraError(
+            secure
+                ? "Webcam API is not supported by your browser or environment."
+                : "Camera access is blocked because you opened the app over an insecure connection. Open it using http://localhost:3000 instead of the LAN IP or Live Server URL, then reload.",
+        );
         return;
     }
 
@@ -528,8 +534,6 @@ btnRetake.onclick = () => {
     if (hudShotCounter) hudShotCounter.innerText = "0 of 6 Captured";
     goToStage(1);
 };
-
-stopCountdownMode(false);
 
 confirmSelectionBtn.onclick = () => {
     if (selectedSlotIndices.length !== 3) {
