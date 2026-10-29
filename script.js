@@ -1,1469 +1,778 @@
- const video = document.getElementById('camera-view');
-    const canvas = document.getElementById('final-canvas');
-    const ctx = canvas.getContext('2d');
-    const frameSidebar = document.getElementById('frame-sidebar');
-    const startBtn = document.getElementById('start-btn');
-    const downloadBtn = document.getElementById('download-btn');
-    const flashEl = document.getElementById('flash');
-    const guide = document.getElementById('camera-guide');
-    const selectionScreen = document.getElementById('selection-screen');
-    const selectionGrid = document.getElementById('selection-grid');
-    const confirmSelectionBtn = document.getElementById('confirm-selection-btn');
+/**
+ * BITS Photobooth Controller
+ * Commercial Kiosk Production Engine
+ * Cavite State University
+ */
 
-    let capturedPhotos = [];
-    let finalSelectedPhotos = [];
-    let currentFilter = 'none';
-    let currentFrameImg = document.querySelector('.frame-thumb.selected');
+// Core DOM Elements
+const video = document.getElementById("camera-view");
+const canvas = document.getElementById("final-canvas");
+const ctx = canvas.getContext("2d");
+const startBtn = document.getElementById("start-btn");
+const startBtnLabel = document.getElementById("start-btn-label");
+const downloadBtn = document.getElementById("download-btn");
+const sendEmailBtn = document.getElementById("send-email-btn");
+const sendEmailLabel = document.getElementById("send-email-label");
+const emailInput = document.getElementById("email-input");
+const emailStatus = document.getElementById("email-status");
+const emailApiUrl = (() => {
+    const apiUrl = new URL("/api/send-email", window.location.origin);
+    if (
+        window.location.port === "5500" ||
+        (["localhost", "127.0.0.1"].includes(window.location.hostname) && window.location.port !== "3000")
+    ) {
+        apiUrl.port = "3000";
+    }
+    return apiUrl.toString();
+})();
+const flashEl = document.getElementById("flash");
+const cropGuide = document.getElementById("crop-guide");
+const hudShotCounter = document.getElementById("hud-shot-counter");
+const cameraStatusPill = document.getElementById("camera-status-pill");
+const cameraStatusText = document.getElementById("camera-status-text");
+const cameraErrorBanner = document.getElementById("camera-error-banner");
+const cameraErrorMsg = document.getElementById("camera-error-msg");
+const btnRetryCamera = document.getElementById("btn-retry-camera");
+const switchCameraBtn = document.getElementById("switch-camera-btn");
+const switchCameraLabel = document.getElementById("switch-camera-label");
 
-    // Init Camera
-    navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720 } })
-        .then(stream => {
-            video.srcObject = stream;
-            video.onloadedmetadata = updateGuide;
-        });
+// Stage Navigation Controls
+const selectionGrid = document.getElementById("selection-grid");
+const confirmSelectionBtn = document.getElementById("confirm-selection-btn");
+const btnRetake = document.getElementById("btn-retake");
+const btnBackToSelect = document.getElementById("btn-back-to-select");
+const btnNext3 = document.getElementById("btn-next-3");
+const btnBackToStudio = document.getElementById("btn-back-to-studio");
+const btnRestart = document.getElementById("btn-restart");
 
-    window.addEventListener('resize', updateGuide);
+// Studio Controls
+const photoPool = document.getElementById("photo-pool");
+const activeSlotLabel = document.getElementById("active-slot-label");
+const slotHotspots = document.querySelectorAll(".slot-hotspot");
 
-    function updateGuide() {
-        if (video.style.display === 'none') {
-            guide.style.display = 'none';
-            return;
+const stageViews = document.querySelectorAll(".stage-view");
+const stepNodes = document.querySelectorAll(".step-node");
+
+// Application State
+let activeStream = null;
+let availableCameras = []; // List of videoinput MediaDeviceInfo
+let currentCameraIndex = 0; // Index into availableCameras
+let capturedPhotos = []; // Array of 6 snapshot canvases
+let selectedSlotIndices = [0, 1, 2]; // 3 indices pointing to chosen shots
+let activeReplacingSlot = 0; // Currently selected slot in studio (0, 1, or 2)
+let currentFilter = "none";
+let currentFrameImg = document.querySelector(".frame-item.selected") || document.querySelector(".frame-item");
+
+const customFrameWindowMap = {
+    "pb-01": [
+        [126, 193, 680, 754],
+        [128, 912, 683, 1473],
+        [117, 1683, 672, 2244],
+    ],
+    "pb-02": [
+        [108, 141, 641, 756],
+        [135, 906, 662, 1494],
+        [135, 1675, 653, 2261],
+    ],
+    "pb-03": [
+        [149, 129, 677, 669],
+        [154, 904, 682, 1444],
+        [154, 1675, 682, 2300],
+    ],
+    "pb-04": [
+        [164, 119, 632, 734],
+        [164, 890, 639, 1504],
+        [164, 1645, 636, 2262],
+    ],
+    "pb-05": [
+        [118, 180, 692, 741],
+        [116, 894, 690, 1513],
+        [118, 1665, 692, 2283],
+    ],
+    "pb-06": [
+        [118, 122, 692, 742],
+        [118, 894, 690, 1514],
+        [118, 1665, 692, 2285],
+    ],
+    "pb-07": [
+        [118, 122, 692, 742],
+        [118, 890, 692, 1510],
+        [118, 1665, 692, 2285],
+    ],
+    "pb-08": [
+        [118, 122, 692, 742],
+        [118, 890, 692, 1510],
+        [118, 1665, 692, 2285],
+    ],
+    "pb-09": [
+        [118, 124, 692, 739],
+        [118, 892, 693, 1507],
+        [110, 1668, 693, 2282],
+    ],
+    "pb-10": [
+        [118, 122, 692, 742],
+        [118, 890, 692, 1510],
+        [118, 1665, 692, 2285],
+    ],
+    "pb-11": [
+        [118, 122, 692, 741],
+        [118, 890, 692, 1510],
+        [118, 1665, 692, 2285],
+    ],
+    "pb-12": [
+        [118, 122, 692, 741],
+        [118, 890, 692, 1510],
+        [118, 1665, 692, 2285],
+    ],
+    "pb-13": [
+        [118, 122, 692, 741],
+        [118, 890, 692, 1510],
+        [118, 1665, 692, 2285],
+    ],
+    "pb-14": [
+        [118, 122, 692, 742],
+        [118, 890, 692, 1510],
+        [118, 1665, 692, 2285],
+    ],
+};
+
+const standardFrameWindows = [
+    [80, 80, 720, 773],
+    [80, 853, 720, 1546],
+    [80, 1627, 720, 2320],
+];
+
+function goToStage(num) {
+    stageViews.forEach((view, idx) => {
+        view.classList.toggle("active", idx + 1 === num);
+    });
+
+    stepNodes.forEach((node, idx) => {
+        const stepNum = idx + 1;
+        node.classList.toggle("active", stepNum === num);
+        node.classList.toggle("completed", stepNum < num);
+    });
+
+    if (num === 1) {
+        initCameraStream();
+    } else {
+        if (video && video.srcObject) {
+            video.pause();
         }
-        const rect = video.getBoundingClientRect();
-        if (rect.width === 0) return;
-
-        const ratio = 0.923; // Slot Ratio (640/693.33) based on padding 80
-        const vidRatio = rect.width / rect.height;
-        
-        let w, h;
-        if (vidRatio > ratio) {
-            h = rect.height;
-            w = h * ratio;
-        } else {
-            w = rect.width;
-            h = w / ratio;
-        }
-        
-        guide.style.width = `${w}px`;
-        guide.style.height = `${h}px`;
-        guide.style.display = 'block';
     }
 
-    // Filter Logic
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-        btn.onclick = () => {
-            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            currentFilter = btn.dataset.filter;
-            video.style.filter = currentFilter;
-            if(finalSelectedPhotos.length > 0) renderFinal(finalSelectedPhotos);
+    if (num === 3) {
+        const canvasHolder = document.getElementById("canvas-wrapper-3");
+        if (canvasHolder && canvas.parentElement !== canvasHolder) {
+            canvasHolder.insertBefore(canvas, canvasHolder.firstChild);
         }
-    });
+        renderStudio();
+    }
 
-    // Frame Selection Logic (Fixed: Re-renders the canvas with existing photos)
-    document.querySelectorAll('.frame-thumb').forEach(img => {
-        img.onclick = () => {
-            document.querySelectorAll('.frame-thumb').forEach(i => i.classList.remove('selected'));
-            img.classList.add('selected');
-            currentFrameImg = img;
-            if (finalSelectedPhotos.length > 0) {
-                renderFinal(finalSelectedPhotos); // Apply new frame to existing images
-            }
+    if (num === 4) {
+        const printEasel = document.getElementById("canvas-wrapper-4");
+        if (printEasel && canvas.parentElement !== printEasel) {
+            printEasel.appendChild(canvas);
         }
-    });
+    }
+}
 
-    // Take Shots Logic
-    startBtn.onclick = () => {
-        const targetCount = 6;
-
-        // Initialize session if starting fresh
-        if (capturedPhotos.length === 0) {
-            video.style.display = 'block';
-            canvas.style.display = 'none';
-            updateGuide();
+async function enumerateCameras() {
+    try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        availableCameras = devices.filter((d) => d.kind === "videoinput");
+        if (switchCameraBtn) {
+            switchCameraBtn.disabled = availableCameras.length <= 1;
+            switchCameraBtn.title = availableCameras.length <= 1 ? "No other cameras available" : "Switch Camera";
         }
+    } catch (e) {
+        console.warn("enumerateDevices failed:", e);
+    }
+}
 
-        flash();
-        snap();
-
-        if (capturedPhotos.length < targetCount) {
-            startBtn.innerText = `Take Photo (${capturedPhotos.length + 1}/${targetCount})`;
-        } else {
-            // All 6 shots taken, move to selection screen
-            video.style.display = 'none';
-            guide.style.display = 'none';
-            startBtn.style.display = 'none';
-            showSelectionScreen();
+async function startCameraById(deviceId) {
+    if (activeStream) {
+        activeStream.getTracks().forEach((t) => t.stop());
+        activeStream = null;
+    }
+    updateCameraStatus("Connecting Camera...", "warning");
+    if (cameraErrorBanner) cameraErrorBanner.style.display = "none";
+    try {
+        const constraints = {
+            video: deviceId
+                ? {
+                      deviceId: { exact: deviceId },
+                      width: { ideal: 1920, min: 1280 },
+                      height: { ideal: 1080, min: 720 },
+                  }
+                : { width: { ideal: 1920, min: 1280 }, height: { ideal: 1080, min: 720 }, facingMode: "user" },
+            audio: false,
+        };
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        activeStream = stream;
+        video.srcObject = stream;
+        video.onloadedmetadata = () => {
+            video.play();
+            updateCameraStatus("Camera Ready", "ready");
+            updateGuideDimensions();
+        };
+        // Re-enumerate after first grant so labels are available
+        await enumerateCameras();
+    } catch (err) {
+        console.error("Camera access failed:", err);
+        let message = "Please grant camera permissions in your browser to proceed.";
+        if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
+            message = "No camera device was detected on your computer.";
+        } else if (err.name === "NotReadableError" || err.name === "TrackStartError") {
+            message = "Your camera is currently in use by another application.";
         }
-    };
+        showCameraError(message);
+    }
+}
 
-    function showSelectionScreen() {
-        selectionGrid.innerHTML = ''; // Clear previous
-        capturedPhotos.forEach((photoCanvas, index) => {
-            const wrapper = document.createElement('div');
-            wrapper.style.position = 'relative';
+async function initCameraStream() {
+    if (activeStream && activeStream.active) {
+        try {
+            await video.play();
+            updateCameraStatus("Camera Ready", "ready");
+            return;
+        } catch (e) {
+            console.warn("Video resume error:", e);
+        }
+    }
 
-            const img = document.createElement('img');
-            img.src = photoCanvas.toDataURL();
-            img.classList.add('selection-thumb');
-            img.dataset.index = index;
-            
-            const num = document.createElement('div');
-            num.className = 'selection-number';
-            num.innerText = index + 1;
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        showCameraError("Webcam API is not supported by your browser or environment.");
+        return;
+    }
 
-            img.onclick = () => {
-                const isSelected = img.classList.contains('selected');
-                const selectedCount = document.querySelectorAll('.selection-thumb.selected').length;
+    await startCameraById(null); // start with default, then enumerate
+}
 
-                if (isSelected) {
-                    img.classList.remove('selected');
-                } else if (selectedCount < 3) {
-                    img.classList.add('selected');
+if (btnRetryCamera) {
+    btnRetryCamera.onclick = () => initCameraStream();
+}
+
+if (switchCameraBtn) {
+    const camMenu = document.getElementById("cam-dropdown-menu");
+
+    function buildCameraMenu() {
+        if (!camMenu) return;
+        camMenu.innerHTML = "";
+        availableCameras.forEach((cam, i) => {
+            const label = cam.label || `Camera ${i + 1}`;
+            const li = document.createElement("li");
+            li.setAttribute("role", "option");
+            li.setAttribute("aria-selected", i === currentCameraIndex ? "true" : "false");
+            li.className = "cam-dropdown-item" + (i === currentCameraIndex ? " active" : "");
+            li.innerHTML = `
+                <span class="cam-item-icon">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                        <circle cx="12" cy="13" r="4"/>
+                    </svg>
+                </span>
+                <span>${label.length > 28 ? label.slice(0, 26) + "…" : label}</span>`;
+            li.onclick = async () => {
+                if (i === currentCameraIndex) {
+                    closeDropdown();
+                    return;
                 }
+                currentCameraIndex = i;
+                const shortLabel = label.length > 16 ? label.slice(0, 14) + "…" : label;
+                if (switchCameraLabel) switchCameraLabel.textContent = shortLabel;
+                closeDropdown();
+                await startCameraById(cam.deviceId);
+                buildCameraMenu(); // refresh active state
             };
-            wrapper.appendChild(img);
-            wrapper.appendChild(num);
-            selectionGrid.appendChild(wrapper);
+            camMenu.appendChild(li);
         });
-        selectionScreen.style.display = 'flex';
     }
 
-    confirmSelectionBtn.onclick = () => {
-        const selectedThumbs = document.querySelectorAll('.selection-thumb.selected');
-        if (selectedThumbs.length !== 3) {
-            alert('Please select exactly 3 photos.');
-            return;
-        }
+    function openDropdown() {
+        buildCameraMenu();
+        camMenu.classList.add("open");
+        switchCameraBtn.setAttribute("aria-expanded", "true");
+    }
 
-        finalSelectedPhotos = Array.from(selectedThumbs).map(thumb => {
-            const index = parseInt(thumb.dataset.index, 10);
-            return capturedPhotos[index];
-        });
+    function closeDropdown() {
+        camMenu.classList.remove("open");
+        switchCameraBtn.setAttribute("aria-expanded", "false");
+    }
 
-        selectionScreen.style.display = 'none';
-        canvas.style.display = 'block';
-        frameSidebar.classList.add('unlocked');
-        downloadBtn.style.display = 'inline-block';
-        startBtn.innerText = "Restart";
-        startBtn.style.display = 'inline-block';
-        startBtn.onclick = () => location.reload();
-        renderFinal(finalSelectedPhotos);
+    switchCameraBtn.onclick = (e) => {
+        e.stopPropagation();
+        const isOpen = camMenu.classList.contains("open");
+        isOpen ? closeDropdown() : openDropdown();
     };
 
-    function flash() {
-        flashEl.style.opacity = 1;
-        setTimeout(() => flashEl.style.opacity = 0, 100);
+    document.addEventListener("click", (e) => {
+        if (!document.getElementById("cam-dropdown-wrap")?.contains(e.target)) {
+            closeDropdown();
+        }
+    });
+}
+
+window.addEventListener("resize", updateGuideDimensions);
+
+function updateCameraStatus(text, state) {
+    if (!cameraStatusText || !cameraStatusPill) return;
+    cameraStatusText.innerText = text;
+    cameraStatusPill.classList.remove("warning", "error");
+    if (state === "warning") cameraStatusPill.classList.add("warning");
+    if (state === "error") cameraStatusPill.classList.add("error");
+}
+
+function showCameraError(msg) {
+    if (cameraErrorBanner && cameraErrorMsg) {
+        cameraErrorMsg.innerText = msg;
+        cameraErrorBanner.style.display = "flex";
+    }
+    updateCameraStatus("Camera Offline", "error");
+}
+
+function updateGuideDimensions() {
+    if (!video || !cropGuide) return;
+    const guideBox = cropGuide.querySelector(".guide-box");
+    if (!guideBox) return;
+
+    const rect = video.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+
+    // Slot standard aspect ratio: 0.923 (width / height)
+    const slotRatio = 0.923;
+    const paddingFactor = 0.88;
+
+    let targetHeight = rect.height * paddingFactor;
+    let targetWidth = targetHeight * slotRatio;
+
+    if (targetWidth > rect.width * paddingFactor) {
+        targetWidth = rect.width * paddingFactor;
+        targetHeight = targetWidth / slotRatio;
     }
 
-    function snap() {
-        const temp = document.createElement('canvas');
-        temp.width = video.videoWidth;
-        temp.height = video.videoHeight;
-        const tCtx = temp.getContext('2d');
-        
-        tCtx.translate(temp.width, 0);
-        tCtx.scale(-1, 1);
-        tCtx.drawImage(video, 0, 0);
-        capturedPhotos.push(temp);
+    guideBox.style.width = `${Math.round(targetWidth)}px`;
+    guideBox.style.height = `${Math.round(targetHeight)}px`;
+}
+
+// ==========================================================================
+// Snapshot & Session Operations
+// ==========================================================================
+function triggerFlash() {
+    if (!flashEl) return;
+    flashEl.style.opacity = "1";
+    setTimeout(() => {
+        flashEl.style.opacity = "0";
+    }, 100);
+}
+
+function captureVideoFrame() {
+    const shotCanvas = document.createElement("canvas");
+    shotCanvas.width = video.videoWidth || 1280;
+    shotCanvas.height = video.videoHeight || 720;
+    const tCtx = shotCanvas.getContext("2d");
+
+    // Flip horizontally to match live mirror feed
+    tCtx.translate(shotCanvas.width, 0);
+    tCtx.scale(-1, 1);
+    tCtx.drawImage(video, 0, 0, shotCanvas.width, shotCanvas.height);
+    capturedPhotos.push(shotCanvas);
+}
+
+// Step 1: Capture one photo per click, then continue after the sixth shot.
+startBtn.onclick = () => {
+    if (capturedPhotos.length >= 6) return;
+    if (!video || video.readyState < 2 || !video.videoWidth) {
+        updateCameraStatus("Camera not ready", "warning");
+        return;
     }
 
-    function renderFinal(photosToRender) {
-        if (!photosToRender || photosToRender.length === 0) return;
-
-        const count = photosToRender.length;
-        const w = 800;
-        const h = (count === 3) ? 2400 : 3200; // Canvas height
-        canvas.width = w;
-        canvas.height = h;
-
-        const frameId = currentFrameImg.dataset.id;
-
-        // Draw Background
-        ctx.filter = 'none';
-        ctx.fillStyle = '#000';
-        ctx.fillRect(0, 0, w, h);
-
-        // Helper: Draw Photos
-        const drawPhotos = () => {
-            const padding = 80;
-            const slotW = w - (padding * 2);
-            const slotH = (h - (padding * (count + 1))) / count;
-
-            photosToRender.forEach((imgCanvas, i) => {
-                const yPos = padding + (i * (slotH + padding));
-                
-                // Aspect Ratio Crop Logic (Center Crop)
-                const sRatio = imgCanvas.width / imgCanvas.height;
-                const dRatio = slotW / slotH;
-                let sx, sy, sWidth, sHeight;
-
-                if (sRatio > dRatio) {
-                    // Image is wider than slot: Crop width
-                    sHeight = imgCanvas.height;
-                    sWidth = imgCanvas.height * dRatio;
-                    sx = (imgCanvas.width - sWidth) / 2;
-                    sy = 0;
-                } else {
-                    // Image is taller than slot: Crop height
-                    sWidth = imgCanvas.width;
-                    sHeight = imgCanvas.width / dRatio;
-                    sx = 0;
-                    sy = (imgCanvas.height - sHeight) / 2;
-                }
-
-                // Draw cropped image with 10px radius
-                ctx.save();
-                ctx.beginPath();
-                ctx.roundRect(padding, yPos, slotW, slotH, 30);
-                ctx.clip();
-                ctx.filter = currentFilter;
-                ctx.drawImage(imgCanvas, sx, sy, sWidth, sHeight, padding, yPos, slotW, slotH);
-                ctx.restore();
-
-                // Draw Border
-                ctx.beginPath();
-                ctx.lineWidth = 10;
-
-                if (frameId === '2') {
-                    ctx.strokeStyle = '#234d71';
-                    ctx.roundRect(padding, yPos, slotW, slotH, 30);
-                    ctx.stroke();
-
-                    // Outer Dashed White Border
-                    ctx.beginPath();
-                    ctx.lineWidth = 4;
-                    ctx.strokeStyle = 'white';
-                    ctx.setLineDash([12, 12]);
-                    ctx.roundRect(padding - 15, yPos - 15, slotW + 30, slotH + 30, 45);
-                    ctx.stroke();
-                    ctx.setLineDash([]);
-                } else {
-                    ctx.strokeStyle = 'white';
-                    ctx.roundRect(padding, yPos, slotW, slotH, 30);
-                    ctx.stroke();
-                }
-            });
-            ctx.filter = 'none';
-        };
-
-        // Helper: Draw Image Fit
-        const drawImageFit = (img) => {
-            const fRatio = img.naturalWidth / img.naturalHeight;
-            const cRatio = w / h;
-            let dw, dh, dx, dy;
-
-            if (fRatio > cRatio) {
-                dh = h;
-                dw = h * fRatio;
-                dx = (w - dw) / 2;
-                dy = 0;
-            } else {
-                dw = w;
-                dh = w / fRatio;
-                dx = 0;
-                dy = (h - dh) / 2;
-            }
-            ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight, dx, dy, dw, dh);
-            return { dx, dy, dw, dh };
-        };
-
-        // --- Frame Logic Switch ---
-        if (frameId === '2') {
-            // FRAME 2: Student Council (3 Layers: Photos + Middle + Top)
-            
-            // 1. Photos (Layer 1)
-            drawPhotos();
-
-            // 2. StudentCouncilLayer1 (Layer 2) - Remove White
-            const scOverlay = document.getElementById('sc-overlay');
-            if (scOverlay) {
-                // Create a temp canvas to remove white background
-                const tempC = document.createElement('canvas');
-                tempC.width = w;
-                tempC.height = h;
-                const tCtx = tempC.getContext('2d');
-
-                // Draw overlay stretched to fit (ensures alignment)
-                tCtx.drawImage(scOverlay, 0, 0, w, h);
-
-                try {
-                    const imgData = tCtx.getImageData(0, 0, w, h);
-                    const data = imgData.data;
-                    
-                    // Define Photo Slots (Replicating drawPhotos logic)
-                    const padding = 80;
-                    const slotH = (h - (padding * (count + 1))) / count;
-                    
-                    // Iterate over each slot and clear white pixels specifically in that area
-                    for (let k = 0; k < count; k++) {
-                        const yStart = Math.floor(padding + (k * (slotH + padding)));
-                        const yEnd = Math.floor(yStart + slotH);
-                        const xStart = padding;
-                        const xEnd = w - padding;
-                        
-                        // Process only the pixels within this slot's rectangle
-                        for (let y = yStart; y < yEnd; y++) {
-                            const rowStart = y * w * 4;
-                            for (let x = xStart; x < xEnd; x++) {
-                                const i = rowStart + (x * 4);
-                                // If pixel is white, make it transparent
-                                if (data[i] > 230 && data[i + 1] > 230 && data[i + 2] > 230) {
-                                    data[i + 3] = 0;
-                                }
-                            }
-                        }
-                    }
-                    tCtx.putImageData(imgData, 0, 0);
-                    ctx.drawImage(tempC, 0, 0);
-                } catch (e) {
-                    // Fallback
-                    ctx.drawImage(scOverlay, 0, 0, w, h);
-                }
-            }
-
-            // 3. Top Layer (StudentCouncilLayer2)
-            const layer2 = document.getElementById('layer2-img');
-            if (layer2) {
-                ctx.drawImage(layer2, 0, 0, w, h);
-            }
-
-        } else if (frameId === '6') {
-            // FRAME 6: Pink (3 Layers: Photos + PinkLayer1 + PinkLayer2)
-            
-            // 1. Photos
-            drawPhotos();
-
-            // 2. PinkLayer1 (Remove White)
-            const pinkL1 = document.getElementById('pink-layer1');
-            if (pinkL1) {
-                const tempC = document.createElement('canvas');
-                tempC.width = w;
-                tempC.height = h;
-                const tCtx = tempC.getContext('2d');
-                tCtx.drawImage(pinkL1, 0, 0, w, h);
-
-                try {
-                    const imgData = tCtx.getImageData(0, 0, w, h);
-                    const data = imgData.data;
-                    const padding = 80;
-                    const slotH = (h - (padding * (count + 1))) / count;
-                    for (let k = 0; k < count; k++) {
-                        const yStart = Math.floor(padding + (k * (slotH + padding)));
-                        const yEnd = Math.floor(yStart + slotH);
-                        const xStart = padding;
-                        const xEnd = w - padding;
-                        for (let y = yStart; y < yEnd; y++) {
-                            const rowStart = y * w * 4;
-                            for (let x = xStart; x < xEnd; x++) {
-                                const i = rowStart + (x * 4);
-                                if (data[i] > 230 && data[i + 1] > 230 && data[i + 2] > 230) data[i + 3] = 0;
-                            }
-                        }
-                    }
-                    tCtx.putImageData(imgData, 0, 0);
-                    ctx.drawImage(tempC, 0, 0);
-                } catch (e) { ctx.drawImage(pinkL1, 0, 0, w, h); }
-            }
-
-            // 3. PinkLayer2
-            const pinkL2 = document.getElementById('pink-layer2');
-            if (pinkL2) {
-                ctx.drawImage(pinkL2, 0, 0, w, h);
-            }
-
-        } else if (frameId === '7') {
-            // FRAME 7: Mean Girls (3 Layers: Photos + MeanGirlsLayer1 + MeanGirlsLayer2)
-            
-            // 1. Photos
-            drawPhotos();
-
-            // 2. MeanGirlsLayer1 (Remove White)
-            const mgL1 = document.getElementById('mg-layer1');
-            if (mgL1) {
-                const tempC = document.createElement('canvas');
-                tempC.width = w;
-                tempC.height = h;
-                const tCtx = tempC.getContext('2d');
-                tCtx.drawImage(mgL1, 0, 0, w, h);
-
-                try {
-                    const imgData = tCtx.getImageData(0, 0, w, h);
-                    const data = imgData.data;
-                    const padding = 80;
-                    const slotH = (h - (padding * (count + 1))) / count;
-                    for (let k = 0; k < count; k++) {
-                        const yStart = Math.floor(padding + (k * (slotH + padding)));
-                        const yEnd = Math.floor(yStart + slotH);
-                        const xStart = padding;
-                        const xEnd = w - padding;
-                        for (let y = yStart; y < yEnd; y++) {
-                            const rowStart = y * w * 4;
-                            for (let x = xStart; x < xEnd; x++) {
-                                const i = rowStart + (x * 4);
-                                if (data[i] > 230 && data[i + 1] > 230 && data[i + 2] > 230) data[i + 3] = 0;
-                            }
-                        }
-                    }
-                    tCtx.putImageData(imgData, 0, 0);
-                    ctx.drawImage(tempC, 0, 0);
-                } catch (e) { ctx.drawImage(mgL1, 0, 0, w, h); }
-            }
-
-            // 3. MeanGirlsLayer2
-            const mgL2 = document.getElementById('mg-layer2');
-            if (mgL2) {
-                ctx.drawImage(mgL2, 0, 0, w, h);
-            }
-
-        } else if (frameId === '8') {
-            // FRAME 8: Kitten (3 Layers: Photos + KittenLayer1 + KittenLayer2)
-            
-            // 1. Photos
-            drawPhotos();
-
-            // 2. KittenLayer1 (Remove White)
-            const kittenL1 = document.getElementById('kitten-layer1');
-            if (kittenL1) {
-                const tempC = document.createElement('canvas');
-                tempC.width = w;
-                tempC.height = h;
-                const tCtx = tempC.getContext('2d');
-                tCtx.drawImage(kittenL1, 0, 0, w, h);
-
-                try {
-                    const imgData = tCtx.getImageData(0, 0, w, h);
-                    const data = imgData.data;
-                    const padding = 80;
-                    const slotH = (h - (padding * (count + 1))) / count;
-                    for (let k = 0; k < count; k++) {
-                        const yStart = Math.floor(padding + (k * (slotH + padding)));
-                        const yEnd = Math.floor(yStart + slotH);
-                        const xStart = padding;
-                        const xEnd = w - padding;
-                        for (let y = yStart; y < yEnd; y++) {
-                            const rowStart = y * w * 4;
-                            for (let x = xStart; x < xEnd; x++) {
-                                const i = rowStart + (x * 4);
-                                if (data[i] > 230 && data[i + 1] > 230 && data[i + 2] > 230) data[i + 3] = 0;
-                            }
-                        }
-                    }
-                    tCtx.putImageData(imgData, 0, 0);
-                    ctx.drawImage(tempC, 0, 0);
-                } catch (e) { ctx.drawImage(kittenL1, 0, 0, w, h); }
-            }
-
-            // 3. KittenLayer2
-            const kittenL2 = document.getElementById('kitten-layer2');
-            if (kittenL2) {
-                ctx.drawImage(kittenL2, 0, 0, w, h);
-            }
-
-        } else if (frameId === '9') {
-            // FRAME 9: Blue (3 Layers: Photos + BlueLayer1 + BlueLayer2)
-            
-            // 1. Photos
-            drawPhotos();
-
-            // 2. BlueLayer1 (Remove White)
-            const blueL1 = document.getElementById('blue-layer1');
-            if (blueL1) {
-                const tempC = document.createElement('canvas');
-                tempC.width = w;
-                tempC.height = h;
-                const tCtx = tempC.getContext('2d');
-                tCtx.drawImage(blueL1, 0, 0, w, h);
-
-                try {
-                    const imgData = tCtx.getImageData(0, 0, w, h);
-                    const data = imgData.data;
-                    const padding = 80;
-                    const slotH = (h - (padding * (count + 1))) / count;
-                    for (let k = 0; k < count; k++) {
-                        const yStart = Math.floor(padding + (k * (slotH + padding)));
-                        const yEnd = Math.floor(yStart + slotH);
-                        const xStart = padding;
-                        const xEnd = w - padding;
-                        for (let y = yStart; y < yEnd; y++) {
-                            const rowStart = y * w * 4;
-                            for (let x = xStart; x < xEnd; x++) {
-                                const i = rowStart + (x * 4);
-                                if (data[i] > 230 && data[i + 1] > 230 && data[i + 2] > 230) data[i + 3] = 0;
-                            }
-                        }
-                    }
-                    tCtx.putImageData(imgData, 0, 0);
-                    ctx.drawImage(tempC, 0, 0);
-                } catch (e) { ctx.drawImage(blueL1, 0, 0, w, h); }
-            }
-
-            // 3. BlueLayer2
-            const blueL2 = document.getElementById('blue-layer2');
-            if (blueL2) {
-                ctx.drawImage(blueL2, 0, 0, w, h);
-            }
-
-        } else if (frameId === '10') {
-            // FRAME 10: Black (3 Layers: Photos + BlackLayer1 + BlackLayer2)
-            
-            // 1. Photos
-            drawPhotos();
-
-            // 2. BlackLayer1 (Remove White)
-            const blackL1 = document.getElementById('black-layer1');
-            if (blackL1) {
-                const tempC = document.createElement('canvas');
-                tempC.width = w;
-                tempC.height = h;
-                const tCtx = tempC.getContext('2d');
-                tCtx.drawImage(blackL1, 0, 0, w, h);
-
-                try {
-                    const imgData = tCtx.getImageData(0, 0, w, h);
-                    const data = imgData.data;
-                    const padding = 80;
-                    const slotH = (h - (padding * (count + 1))) / count;
-                    for (let k = 0; k < count; k++) {
-                        const yStart = Math.floor(padding + (k * (slotH + padding)));
-                        const yEnd = Math.floor(yStart + slotH);
-                        const xStart = padding;
-                        const xEnd = w - padding;
-                        for (let y = yStart; y < yEnd; y++) {
-                            const rowStart = y * w * 4;
-                            for (let x = xStart; x < xEnd; x++) {
-                                const i = rowStart + (x * 4);
-                                if (data[i] > 230 && data[i + 1] > 230 && data[i + 2] > 230) data[i + 3] = 0;
-                            }
-                        }
-                    }
-                    tCtx.putImageData(imgData, 0, 0);
-                    ctx.drawImage(tempC, 0, 0);
-                } catch (e) { ctx.drawImage(blackL1, 0, 0, w, h); }
-            }
-
-            // 3. BlackLayer2
-            const blackL2 = document.getElementById('black-layer2');
-            if (blackL2) {
-                ctx.drawImage(blackL2, 0, 0, w, h);
-            }
-
-        } else if (frameId === '11') {
-            // FRAME 11: Nerd (3 Layers: Photos + NerdLayer1 + NerdLayer2)
-            
-            // 1. Photos
-            drawPhotos();
-
-            // 2. NerdLayer1 (Remove White)
-            const nerdL1 = document.getElementById('nerd-layer1');
-            if (nerdL1) {
-                const tempC = document.createElement('canvas');
-                tempC.width = w;
-                tempC.height = h;
-                const tCtx = tempC.getContext('2d');
-                tCtx.drawImage(nerdL1, 0, 0, w, h);
-
-                try {
-                    const imgData = tCtx.getImageData(0, 0, w, h);
-                    const data = imgData.data;
-                    const padding = 80;
-                    const slotH = (h - (padding * (count + 1))) / count;
-                    for (let k = 0; k < count; k++) {
-                        const yStart = Math.floor(padding + (k * (slotH + padding)));
-                        const yEnd = Math.floor(yStart + slotH);
-                        const xStart = padding;
-                        const xEnd = w - padding;
-                        for (let y = yStart; y < yEnd; y++) {
-                            const rowStart = y * w * 4;
-                            for (let x = xStart; x < xEnd; x++) {
-                                const i = rowStart + (x * 4);
-                                if (data[i] > 230 && data[i + 1] > 230 && data[i + 2] > 230) data[i + 3] = 0;
-                            }
-                        }
-                    }
-                    tCtx.putImageData(imgData, 0, 0);
-                    ctx.drawImage(tempC, 0, 0);
-                } catch (e) { ctx.drawImage(nerdL1, 0, 0, w, h); }
-            }
-
-            // 3. NerdLayer2
-            const nerdL2 = document.getElementById('nerd-layer2');
-            if (nerdL2) {
-                ctx.drawImage(nerdL2, 0, 0, w, h);
-            }
-
-        } else if (frameId === '12') {
-            // FRAME 12: Receipt (3 Layers: Photos + ReceiptLayer1 + ReceiptLayer2)
-            
-            // 1. Photos
-            drawPhotos();
-
-            // 2. ReceiptLayer1 (Remove White)
-            const receiptL1 = document.getElementById('receipt-layer1');
-            if (receiptL1) {
-                const tempC = document.createElement('canvas');
-                tempC.width = w;
-                tempC.height = h;
-                const tCtx = tempC.getContext('2d');
-                tCtx.drawImage(receiptL1, 0, 0, w, h);
-
-                try {
-                    const imgData = tCtx.getImageData(0, 0, w, h);
-                    const data = imgData.data;
-                    const padding = 80;
-                    const slotH = (h - (padding * (count + 1))) / count;
-                    for (let k = 0; k < count; k++) {
-                        const yStart = Math.floor(padding + (k * (slotH + padding)));
-                        const yEnd = Math.floor(yStart + slotH);
-                        const xStart = padding;
-                        const xEnd = w - padding;
-                        for (let y = yStart; y < yEnd; y++) {
-                            const rowStart = y * w * 4;
-                            for (let x = xStart; x < xEnd; x++) {
-                                const i = rowStart + (x * 4);
-                                if (data[i] > 230 && data[i + 1] > 230 && data[i + 2] > 230) data[i + 3] = 0;
-                            }
-                        }
-                    }
-                    tCtx.putImageData(imgData, 0, 0);
-                    ctx.drawImage(tempC, 0, 0);
-                } catch (e) { ctx.drawImage(receiptL1, 0, 0, w, h); }
-            }
-
-            // 3. ReceiptLayer2
-            const receiptL2 = document.getElementById('receipt-layer2');
-            if (receiptL2) {
-                ctx.drawImage(receiptL2, 0, 0, w, h);
-            }
-
-        } else if (frameId === '13') {
-            // FRAME 13: Vigi (3 Layers: Photos + VigiLayer1 + VigiLayer2)
-            
-            // 1. Photos
-            drawPhotos();
-
-            // 2. VigiLayer1 (Remove White)
-            const vigiL1 = document.getElementById('vigi-layer1');
-            if (vigiL1) {
-                const tempC = document.createElement('canvas');
-                tempC.width = w;
-                tempC.height = h;
-                const tCtx = tempC.getContext('2d');
-                tCtx.drawImage(vigiL1, 0, 0, w, h);
-
-                try {
-                    const imgData = tCtx.getImageData(0, 0, w, h);
-                    const data = imgData.data;
-                    const padding = 80;
-                    const slotH = (h - (padding * (count + 1))) / count;
-                    for (let k = 0; k < count; k++) {
-                        const yStart = Math.floor(padding + (k * (slotH + padding)));
-                        const yEnd = Math.floor(yStart + slotH);
-                        const xStart = padding;
-                        const xEnd = w - padding;
-                        for (let y = yStart; y < yEnd; y++) {
-                            const rowStart = y * w * 4;
-                            for (let x = xStart; x < xEnd; x++) {
-                                const i = rowStart + (x * 4);
-                                if (data[i] > 230 && data[i + 1] > 230 && data[i + 2] > 230) data[i + 3] = 0;
-                            }
-                        }
-                    }
-                    tCtx.putImageData(imgData, 0, 0);
-                    ctx.drawImage(tempC, 0, 0);
-                } catch (e) { ctx.drawImage(vigiL1, 0, 0, w, h); }
-            }
-
-            // 3. VigiLayer2
-            const vigiL2 = document.getElementById('vigi-layer2');
-            if (vigiL2) {
-                ctx.drawImage(vigiL2, 0, 0, w, h);
-            }
-
-        } else if (frameId === '14') {
-            // FRAME 14: Techno (3 Layers: Photos + TechnoLayer1 + TechnoLayer2)
-            
-            // 1. Photos
-            drawPhotos();
-
-            // 2. TechnoLayer1 (Remove White)
-            const technoL1 = document.getElementById('techno-layer1');
-            if (technoL1) {
-                const tempC = document.createElement('canvas');
-                tempC.width = w;
-                tempC.height = h;
-                const tCtx = tempC.getContext('2d');
-                tCtx.drawImage(technoL1, 0, 0, w, h);
-
-                try {
-                    const imgData = tCtx.getImageData(0, 0, w, h);
-                    const data = imgData.data;
-                    const padding = 80;
-                    const slotH = (h - (padding * (count + 1))) / count;
-                    for (let k = 0; k < count; k++) {
-                        const yStart = Math.floor(padding + (k * (slotH + padding)));
-                        const yEnd = Math.floor(yStart + slotH);
-                        const xStart = padding;
-                        const xEnd = w - padding;
-                        for (let y = yStart; y < yEnd; y++) {
-                            const rowStart = y * w * 4;
-                            for (let x = xStart; x < xEnd; x++) {
-                                const i = rowStart + (x * 4);
-                                if (data[i] > 230 && data[i + 1] > 230 && data[i + 2] > 230) data[i + 3] = 0;
-                            }
-                        }
-                    }
-                    tCtx.putImageData(imgData, 0, 0);
-                    ctx.drawImage(tempC, 0, 0);
-                } catch (e) { ctx.drawImage(technoL1, 0, 0, w, h); }
-            }
-
-            // 3. TechnoLayer2
-            const technoL2 = document.getElementById('techno-layer2');
-            if (technoL2) {
-                ctx.drawImage(technoL2, 0, 0, w, h);
-            }
-
-        } else if (frameId === '15') {
-            // FRAME 15: Shrek (3 Layers: Photos + ShrekLayer1 + ShrekLayer2)
-            
-            // 1. Photos
-            drawPhotos();
-
-            // 2. ShrekLayer1 (Remove White)
-            const shrekL1 = document.getElementById('shrek-layer1');
-            if (shrekL1) {
-                const tempC = document.createElement('canvas');
-                tempC.width = w;
-                tempC.height = h;
-                const tCtx = tempC.getContext('2d');
-                tCtx.drawImage(shrekL1, 0, 0, w, h);
-
-                try {
-                    const imgData = tCtx.getImageData(0, 0, w, h);
-                    const data = imgData.data;
-                    const padding = 80;
-                    const slotH = (h - (padding * (count + 1))) / count;
-                    for (let k = 0; k < count; k++) {
-                        const yStart = Math.floor(padding + (k * (slotH + padding)));
-                        const yEnd = Math.floor(yStart + slotH);
-                        const xStart = padding;
-                        const xEnd = w - padding;
-                        for (let y = yStart; y < yEnd; y++) {
-                            const rowStart = y * w * 4;
-                            for (let x = xStart; x < xEnd; x++) {
-                                const i = rowStart + (x * 4);
-                                if (data[i] > 230 && data[i + 1] > 230 && data[i + 2] > 230) data[i + 3] = 0;
-                            }
-                        }
-                    }
-                    tCtx.putImageData(imgData, 0, 0);
-                    ctx.drawImage(tempC, 0, 0);
-                } catch (e) { ctx.drawImage(shrekL1, 0, 0, w, h); }
-            }
-
-            // 3. ShrekLayer2
-            const shrekL2 = document.getElementById('shrek-layer2');
-            if (shrekL2) {
-                ctx.drawImage(shrekL2, 0, 0, w, h);
-            }
-
-        } else if (frameId === '16') {
-            // FRAME 16: Sanrio (3 Layers: Photos + SanrioLayer1 + SanrioLayer2)
-            
-            // 1. Photos
-            drawPhotos();
-
-            // 2. SanrioLayer1 (Remove Black)
-            const sanrioL1 = document.getElementById('sanrio-layer1');
-            if (sanrioL1) {
-                const tempC = document.createElement('canvas');
-                tempC.width = w;
-                tempC.height = h;
-                const tCtx = tempC.getContext('2d');
-                tCtx.drawImage(sanrioL1, 0, 0, w, h);
-
-                try {
-                    const imgData = tCtx.getImageData(0, 0, w, h);
-                    const data = imgData.data;
-                    const padding = 80;
-                    const slotH = (h - (padding * (count + 1))) / count;
-                    for (let k = 0; k < count; k++) {
-                        const yStart = Math.floor(padding + (k * (slotH + padding)));
-                        const yEnd = Math.floor(yStart + slotH);
-                        const xStart = padding;
-                        const xEnd = w - padding;
-                        for (let y = yStart; y < yEnd; y++) {
-                            const rowStart = y * w * 4;
-                            for (let x = xStart; x < xEnd; x++) {
-                                const i = rowStart + (x * 4);
-                                if (data[i] < 50 && data[i + 1] < 50 && data[i + 2] < 50) data[i + 3] = 0;
-                            }
-                        }
-                    }
-                    tCtx.putImageData(imgData, 0, 0);
-                    ctx.drawImage(tempC, 0, 0);
-                } catch (e) { ctx.drawImage(sanrioL1, 0, 0, w, h); }
-            }
-
-            // 3. SanrioLayer2
-            const sanrioL2 = document.getElementById('sanrio-layer2');
-            if (sanrioL2) {
-                ctx.drawImage(sanrioL2, 0, 0, w, h);
-            }
-
-        } else if (frameId === '18') {
-            // FRAME 18: Stitch (3 Layers: Photos + StitchLayer1 + StitchLayer2)
-            
-            // 1. Photos
-            drawPhotos();
-
-            // 2. StitchLayer1 (Remove White)
-            const stitchL1 = document.getElementById('stitch-layer1');
-            if (stitchL1) {
-                const tempC = document.createElement('canvas');
-                tempC.width = w;
-                tempC.height = h;
-                const tCtx = tempC.getContext('2d');
-                tCtx.drawImage(stitchL1, 0, 0, w, h);
-
-                try {
-                    const imgData = tCtx.getImageData(0, 0, w, h);
-                    const data = imgData.data;
-                    const padding = 80;
-                    const slotH = (h - (padding * (count + 1))) / count;
-                    for (let k = 0; k < count; k++) {
-                        const yStart = Math.floor(padding + (k * (slotH + padding)));
-                        const yEnd = Math.floor(yStart + slotH);
-                        const xStart = padding;
-                        const xEnd = w - padding;
-                        for (let y = yStart; y < yEnd; y++) {
-                            const rowStart = y * w * 4;
-                            for (let x = xStart; x < xEnd; x++) {
-                                const i = rowStart + (x * 4);
-                                if (data[i] > 230 && data[i + 1] > 230 && data[i + 2] > 230) data[i + 3] = 0;
-                            }
-                        }
-                    }
-                    tCtx.putImageData(imgData, 0, 0);
-                    ctx.drawImage(tempC, 0, 0);
-                } catch (e) { ctx.drawImage(stitchL1, 0, 0, w, h); }
-            }
-
-            // 3. StitchLayer2
-            const stitchL2 = document.getElementById('stitch-layer2');
-            if (stitchL2) {
-                ctx.drawImage(stitchL2, 0, 0, w, h);
-            }
-        } else if (frameId === '20') {
-            // FRAME 20: Min2 (3 Layers: Photos + Min2Layer1 + Min2Layer2)
-            
-            // 1. Photos
-            drawPhotos();
-
-            // 2. Min2Layer1 (Remove White)
-            const min2L1 = document.getElementById('min2-layer1');
-            if (min2L1) {
-                const tempC = document.createElement('canvas');
-                tempC.width = w;
-                tempC.height = h;
-                const tCtx = tempC.getContext('2d');
-                tCtx.drawImage(min2L1, 0, 0, w, h);
-
-                try {
-                    const imgData = tCtx.getImageData(0, 0, w, h);
-                    const data = imgData.data;
-                    const padding = 80;
-                    const slotH = (h - (padding * (count + 1))) / count;
-                    for (let k = 0; k < count; k++) {
-                        const yStart = Math.floor(padding + (k * (slotH + padding)));
-                        const yEnd = Math.floor(yStart + slotH);
-                        const xStart = padding;
-                        const xEnd = w - padding;
-                        for (let y = yStart; y < yEnd; y++) {
-                            const rowStart = y * w * 4;
-                            for (let x = xStart; x < xEnd; x++) {
-                                const i = rowStart + (x * 4);
-                                if (data[i] > 230 && data[i + 1] > 230 && data[i + 2] > 230) data[i + 3] = 0;
-                            }
-                        }
-                    }
-                    tCtx.putImageData(imgData, 0, 0);
-                    ctx.drawImage(tempC, 0, 0);
-                } catch (e) { ctx.drawImage(min2L1, 0, 0, w, h); }
-            }
-
-            // 3. Min2Layer2
-            const min2L2 = document.getElementById('min2-layer2');
-            if (min2L2) {
-                ctx.drawImage(min2L2, 0, 0, w, h);
-            }
-        } else if (frameId === '21') {
-            // FRAME 21: Min3 (3 Layers: Photos + Min3Layer1 + Min3Layer2)
-            
-            // 1. Photos
-            drawPhotos();
-
-            // 2. Min3Layer1 (Remove White)
-            const min3L1 = document.getElementById('min3-layer1');
-            if (min3L1) {
-                const tempC = document.createElement('canvas');
-                tempC.width = w;
-                tempC.height = h;
-                const tCtx = tempC.getContext('2d');
-                tCtx.drawImage(min3L1, 0, 0, w, h);
-
-                try {
-                    const imgData = tCtx.getImageData(0, 0, w, h);
-                    const data = imgData.data;
-                    const padding = 80;
-                    const slotH = (h - (padding * (count + 1))) / count;
-                    for (let k = 0; k < count; k++) {
-                        const yStart = Math.floor(padding + (k * (slotH + padding)));
-                        const yEnd = Math.floor(yStart + slotH);
-                        const xStart = padding;
-                        const xEnd = w - padding;
-                        for (let y = yStart; y < yEnd; y++) {
-                            const rowStart = y * w * 4;
-                            for (let x = xStart; x < xEnd; x++) {
-                                const i = rowStart + (x * 4);
-                                if (data[i] > 230 && data[i + 1] > 230 && data[i + 2] > 230) data[i + 3] = 0;
-                            }
-                        }
-                    }
-                    tCtx.putImageData(imgData, 0, 0);
-                    ctx.drawImage(tempC, 0, 0);
-                } catch (e) { ctx.drawImage(min3L1, 0, 0, w, h); }
-            }
-
-            // 3. Min3Layer2
-            const min3L2 = document.getElementById('min3-layer2');
-            if (min3L2) {
-                ctx.drawImage(min3L2, 0, 0, w, h);
-            }
-        } else if (frameId === '22') {
-            // FRAME 22: Min4 (3 Layers: Photos + Min4Layer1 + Min4Layer2)
-            
-            // 1. Photos
-            drawPhotos();
-
-            // 2. Min4Layer1 (Remove White)
-            const min4L1 = document.getElementById('min4-layer1');
-            if (min4L1) {
-                const tempC = document.createElement('canvas');
-                tempC.width = w;
-                tempC.height = h;
-                const tCtx = tempC.getContext('2d');
-                tCtx.drawImage(min4L1, 0, 0, w, h);
-
-                try {
-                    const imgData = tCtx.getImageData(0, 0, w, h);
-                    const data = imgData.data;
-                    const padding = 80;
-                    const slotH = (h - (padding * (count + 1))) / count;
-                    for (let k = 0; k < count; k++) {
-                        const yStart = Math.floor(padding + (k * (slotH + padding)));
-                        const yEnd = Math.floor(yStart + slotH);
-                        const xStart = padding;
-                        const xEnd = w - padding;
-                        for (let y = yStart; y < yEnd; y++) {
-                            const rowStart = y * w * 4;
-                            for (let x = xStart; x < xEnd; x++) {
-                                const i = rowStart + (x * 4);
-                                if (data[i] > 230 && data[i + 1] > 230 && data[i + 2] > 230) data[i + 3] = 0;
-                            }
-                        }
-                    }
-                    tCtx.putImageData(imgData, 0, 0);
-                    ctx.drawImage(tempC, 0, 0);
-                } catch (e) { ctx.drawImage(min4L1, 0, 0, w, h); }
-            }
-
-            // 3. Min4Layer2
-            const min4L2 = document.getElementById('min4-layer2');
-            if (min4L2) {
-                ctx.drawImage(min4L2, 0, 0, w, h);
-            }
-        } else if (frameId === '23') {
-            // FRAME 23: Min5 (3 Layers: Photos + Min5Layer1 + Min5Layer2)
-            
-            // 1. Photos
-            drawPhotos();
-
-            // 2. Min5Layer1 (Remove White)
-            const min5L1 = document.getElementById('min5-layer1');
-            if (min5L1) {
-                const tempC = document.createElement('canvas');
-                tempC.width = w;
-                tempC.height = h;
-                const tCtx = tempC.getContext('2d');
-                tCtx.drawImage(min5L1, 0, 0, w, h);
-
-                try {
-                    const imgData = tCtx.getImageData(0, 0, w, h);
-                    const data = imgData.data;
-                    const padding = 80;
-                    const slotH = (h - (padding * (count + 1))) / count;
-                    for (let k = 0; k < count; k++) {
-                        const yStart = Math.floor(padding + (k * (slotH + padding)));
-                        const yEnd = Math.floor(yStart + slotH);
-                        const xStart = padding;
-                        const xEnd = w - padding;
-                        for (let y = yStart; y < yEnd; y++) {
-                            const rowStart = y * w * 4;
-                            for (let x = xStart; x < xEnd; x++) {
-                                const i = rowStart + (x * 4);
-                                if (data[i] > 230 && data[i + 1] > 230 && data[i + 2] > 230) data[i + 3] = 0;
-                            }
-                        }
-                    }
-                    tCtx.putImageData(imgData, 0, 0);
-                    ctx.drawImage(tempC, 0, 0);
-                } catch (e) { ctx.drawImage(min5L1, 0, 0, w, h); }
-            }
-
-            // 3. Min5Layer2
-            const min5L2 = document.getElementById('min5-layer2');
-            if (min5L2) {
-                ctx.drawImage(min5L2, 0, 0, w, h);
-            }
-        } else if (frameId === '24') {
-            // FRAME 24: Min6 (3 Layers: Photos + Min6Layer1 + Min6Layer2)
-            
-            // 1. Photos
-            drawPhotos();
-
-            // 2. Min6Layer1 (Remove White)
-            const min6L1 = document.getElementById('min6-layer1');
-            if (min6L1) {
-                const tempC = document.createElement('canvas');
-                tempC.width = w;
-                tempC.height = h;
-                const tCtx = tempC.getContext('2d');
-                tCtx.drawImage(min6L1, 0, 0, w, h);
-
-                try {
-                    const imgData = tCtx.getImageData(0, 0, w, h);
-                    const data = imgData.data;
-                    const padding = 80;
-                    const slotH = (h - (padding * (count + 1))) / count;
-                    for (let k = 0; k < count; k++) {
-                        const yStart = Math.floor(padding + (k * (slotH + padding)));
-                        const yEnd = Math.floor(yStart + slotH);
-                        const xStart = padding;
-                        const xEnd = w - padding;
-                        for (let y = yStart; y < yEnd; y++) {
-                            const rowStart = y * w * 4;
-                            for (let x = xStart; x < xEnd; x++) {
-                                const i = rowStart + (x * 4);
-                                if (data[i] > 230 && data[i + 1] > 230 && data[i + 2] > 230) data[i + 3] = 0;
-                            }
-                        }
-                    }
-                    tCtx.putImageData(imgData, 0, 0);
-                    ctx.drawImage(tempC, 0, 0);
-                } catch (e) { ctx.drawImage(min6L1, 0, 0, w, h); }
-            }
-
-            // 3. Min6Layer2
-            const min6L2 = document.getElementById('min6-layer2');
-            if (min6L2) {
-                ctx.drawImage(min6L2, 0, 0, w, h);
-            }
-        } else if (frameId === '25') {
-            // FRAME 25: Min7 (3 Layers: Photos + Min7Layer1 + Min7Layer2)
-            
-            // 1. Photos
-            drawPhotos();
-
-            // 2. Min7Layer1 (Remove White)
-            const min7L1 = document.getElementById('min7-layer1');
-            if (min7L1) {
-                const tempC = document.createElement('canvas');
-                tempC.width = w;
-                tempC.height = h;
-                const tCtx = tempC.getContext('2d');
-                tCtx.drawImage(min7L1, 0, 0, w, h);
-
-                try {
-                    const imgData = tCtx.getImageData(0, 0, w, h);
-                    const data = imgData.data;
-                    const padding = 80;
-                    const slotH = (h - (padding * (count + 1))) / count;
-                    for (let k = 0; k < count; k++) {
-                        const yStart = Math.floor(padding + (k * (slotH + padding)));
-                        const yEnd = Math.floor(yStart + slotH);
-                        const xStart = padding;
-                        const xEnd = w - padding;
-                        for (let y = yStart; y < yEnd; y++) {
-                            const rowStart = y * w * 4;
-                            for (let x = xStart; x < xEnd; x++) {
-                                const i = rowStart + (x * 4);
-                                if (data[i] > 230 && data[i + 1] > 230 && data[i + 2] > 230) data[i + 3] = 0;
-                            }
-                        }
-                    }
-                    tCtx.putImageData(imgData, 0, 0);
-                    ctx.drawImage(tempC, 0, 0);
-                } catch (e) { ctx.drawImage(min7L1, 0, 0, w, h); }
-            }
-
-            // 3. Min7Layer2
-            const min7L2 = document.getElementById('min7-layer2');
-            if (min7L2) {
-                ctx.drawImage(min7L2, 0, 0, w, h);
-            }
-        } else if (frameId === '26') {
-            // FRAME 26: Min8 (3 Layers: Photos + Min8Layer1 + Min8Layer2)
-            
-            // 1. Photos
-            drawPhotos();
-
-            // 2. Min8Layer1 (Remove White)
-            const min8L1 = document.getElementById('min8-layer1');
-            if (min8L1) {
-                const tempC = document.createElement('canvas');
-                tempC.width = w;
-                tempC.height = h;
-                const tCtx = tempC.getContext('2d');
-                tCtx.drawImage(min8L1, 0, 0, w, h);
-
-                try {
-                    const imgData = tCtx.getImageData(0, 0, w, h);
-                    const data = imgData.data;
-                    const padding = 80;
-                    const slotH = (h - (padding * (count + 1))) / count;
-                    for (let k = 0; k < count; k++) {
-                        const yStart = Math.floor(padding + (k * (slotH + padding)));
-                        const yEnd = Math.floor(yStart + slotH);
-                        const xStart = padding;
-                        const xEnd = w - padding;
-                        for (let y = yStart; y < yEnd; y++) {
-                            const rowStart = y * w * 4;
-                            for (let x = xStart; x < xEnd; x++) {
-                                const i = rowStart + (x * 4);
-                                if (data[i] > 230 && data[i + 1] > 230 && data[i + 2] > 230) data[i + 3] = 0;
-                            }
-                        }
-                    }
-                    tCtx.putImageData(imgData, 0, 0);
-                    ctx.drawImage(tempC, 0, 0);
-                } catch (e) { ctx.drawImage(min8L1, 0, 0, w, h); }
-            }
-
-            // 3. Min8Layer2
-            const min8L2 = document.getElementById('min8-layer2');
-            if (min8L2) {
-                ctx.drawImage(min8L2, 0, 0, w, h);
-            }
-        } else if (frameId === '27') {
-            // FRAME 27: Min9 (3 Layers: Photos + Min9Layer1 + Min9Layer2)
-            
-            // 1. Photos
-            drawPhotos();
-
-            // 2. Min9Layer1 (Remove White)
-            const min9L1 = document.getElementById('min9-layer1');
-            if (min9L1) {
-                const tempC = document.createElement('canvas');
-                tempC.width = w;
-                tempC.height = h;
-                const tCtx = tempC.getContext('2d');
-                tCtx.drawImage(min9L1, 0, 0, w, h);
-
-                try {
-                    const imgData = tCtx.getImageData(0, 0, w, h);
-                    const data = imgData.data;
-                    const padding = 80;
-                    const slotH = (h - (padding * (count + 1))) / count;
-                    for (let k = 0; k < count; k++) {
-                        const yStart = Math.floor(padding + (k * (slotH + padding)));
-                        const yEnd = Math.floor(yStart + slotH);
-                        const xStart = padding;
-                        const xEnd = w - padding;
-                        for (let y = yStart; y < yEnd; y++) {
-                            const rowStart = y * w * 4;
-                            for (let x = xStart; x < xEnd; x++) {
-                                const i = rowStart + (x * 4);
-                                if (data[i] > 230 && data[i + 1] > 230 && data[i + 2] > 230) data[i + 3] = 0;
-                            }
-                        }
-                    }
-                    tCtx.putImageData(imgData, 0, 0);
-                    ctx.drawImage(tempC, 0, 0);
-                } catch (e) { ctx.drawImage(min9L1, 0, 0, w, h); }
-            }
-
-            // 3. Min9Layer2
-            const min9L2 = document.getElementById('min9-layer2');
-            if (min9L2) {
-                ctx.drawImage(min9L2, 0, 0, w, h);
-            }
-        } else if (frameId === '28') {
-            // FRAME 28: Liga (3 Layers: Photos + LigaLayer1 + LigaLayer2)
-            
-            // 1. Photos
-            drawPhotos();
-
-            // 2. LigaLayer1 (Remove White)
-            const ligaL1 = document.getElementById('liga-layer1');
-            if (ligaL1) {
-                const tempC = document.createElement('canvas');
-                tempC.width = w;
-                tempC.height = h;
-                const tCtx = tempC.getContext('2d');
-                tCtx.drawImage(ligaL1, 0, 0, w, h);
-
-                try {
-                    const imgData = tCtx.getImageData(0, 0, w, h);
-                    const data = imgData.data;
-                    const padding = 80;
-                    const slotH = (h - (padding * (count + 1))) / count;
-                    for (let k = 0; k < count; k++) {
-                        const yStart = Math.floor(padding + (k * (slotH + padding)));
-                        const yEnd = Math.floor(yStart + slotH);
-                        const xStart = padding;
-                        const xEnd = w - padding;
-                        for (let y = yStart; y < yEnd; y++) {
-                            const rowStart = y * w * 4;
-                            for (let x = xStart; x < xEnd; x++) {
-                                const i = rowStart + (x * 4);
-                                if (data[i] > 230 && data[i + 1] > 230 && data[i + 2] > 230) data[i + 3] = 0;
-                            }
-                        }
-                    }
-                    tCtx.putImageData(imgData, 0, 0);
-                    ctx.drawImage(tempC, 0, 0);
-                } catch (e) { ctx.drawImage(ligaL1, 0, 0, w, h); }
-            }
-
-            // 3. LigaLayer2
-            const ligaL2 = document.getElementById('liga-layer2');
-            if (ligaL2) {
-                ctx.drawImage(ligaL2, 0, 0, w, h);
-            }
-        } else if (frameId === '19') {
-            // FRAME 19: Min1 (3 Layers: Photos + Min1Layer1 + Min1Layer2)
-            
-            // 1. Photos
-            drawPhotos();
-
-            // 2. Min1Layer1 (Remove White)
-            const min1L1 = document.getElementById('min1-layer1');
-            if (min1L1) {
-                const tempC = document.createElement('canvas');
-                tempC.width = w;
-                tempC.height = h;
-                const tCtx = tempC.getContext('2d');
-                tCtx.drawImage(min1L1, 0, 0, w, h);
-
-                try {
-                    const imgData = tCtx.getImageData(0, 0, w, h);
-                    const data = imgData.data;
-                    const padding = 80;
-                    const slotH = (h - (padding * (count + 1))) / count;
-                    for (let k = 0; k < count; k++) {
-                        const yStart = Math.floor(padding + (k * (slotH + padding)));
-                        const yEnd = Math.floor(yStart + slotH);
-                        const xStart = padding;
-                        const xEnd = w - padding;
-                        for (let y = yStart; y < yEnd; y++) {
-                            const rowStart = y * w * 4;
-                            for (let x = xStart; x < xEnd; x++) {
-                                const i = rowStart + (x * 4);
-                                if (data[i] > 230 && data[i + 1] > 230 && data[i + 2] > 230) data[i + 3] = 0;
-                            }
-                        }
-                    }
-                    tCtx.putImageData(imgData, 0, 0);
-                    ctx.drawImage(tempC, 0, 0);
-                } catch (e) { ctx.drawImage(min1L1, 0, 0, w, h); }
-            }
-
-            // 3. Min1Layer2
-            const min1L2 = document.getElementById('min1-layer2');
-            if (min1L2) {
-                ctx.drawImage(min1L2, 0, 0, w, h);
-            }
-
-        } else if (frameId === '17') {
-            // FRAME 17: Donato (3 Layers: Photos + DonatoLayer1 + DonatoLayer2)
-            
-            // 1. Photos
-            drawPhotos();
-
-            // 2. DonatoLayer1 (Remove White)
-            const donatoL1 = document.getElementById('donato-layer1');
-            if (donatoL1) {
-                const tempC = document.createElement('canvas');
-                tempC.width = w;
-                tempC.height = h;
-                const tCtx = tempC.getContext('2d');
-                tCtx.drawImage(donatoL1, 0, 0, w, h);
-
-                try {
-                    const imgData = tCtx.getImageData(0, 0, w, h);
-                    const data = imgData.data;
-                    const padding = 80;
-                    const slotH = (h - (padding * (count + 1))) / count;
-                    for (let k = 0; k < count; k++) {
-                        const yStart = Math.floor(padding + (k * (slotH + padding)));
-                        const yEnd = Math.floor(yStart + slotH);
-                        const xStart = padding;
-                        const xEnd = w - padding;
-                        for (let y = yStart; y < yEnd; y++) {
-                            const rowStart = y * w * 4;
-                            for (let x = xStart; x < xEnd; x++) {
-                                const i = rowStart + (x * 4);
-                                if (data[i] > 230 && data[i + 1] > 230 && data[i + 2] > 230) data[i + 3] = 0;
-                            }
-                        }
-                    }
-                    tCtx.putImageData(imgData, 0, 0);
-                    ctx.drawImage(tempC, 0, 0);
-                } catch (e) { ctx.drawImage(donatoL1, 0, 0, w, h); }
-            }
-
-            // 3. DonatoLayer2
-            const donatoL2 = document.getElementById('donato-layer2');
-            if (donatoL2) {
-                ctx.drawImage(donatoL2, 0, 0, w, h);
-            }
-
-        } else if (frameId === '3') {
-            // FRAME 3: Stag (3 Layers: Photos + StagLayer1 + StagLayer2)
-            
-            // 1. Photos
-            drawPhotos();
-
-            // 2. StagLayer1 (Remove White)
-            const stagL1 = document.getElementById('stag-layer1');
-            if (stagL1) {
-                const tempC = document.createElement('canvas');
-                tempC.width = w;
-                tempC.height = h;
-                const tCtx = tempC.getContext('2d');
-
-                tCtx.drawImage(stagL1, 0, 0, w, h);
-
-                try {
-                    const imgData = tCtx.getImageData(0, 0, w, h);
-                    const data = imgData.data;
-                    
-                    const padding = 80;
-                    const slotH = (h - (padding * (count + 1))) / count;
-
-                    for (let k = 0; k < count; k++) {
-                        const yStart = Math.floor(padding + (k * (slotH + padding)));
-                        const yEnd = Math.floor(yStart + slotH);
-                        const xStart = padding;
-                        const xEnd = w - padding;
-                        
-                        for (let y = yStart; y < yEnd; y++) {
-                            const rowStart = y * w * 4;
-                            for (let x = xStart; x < xEnd; x++) {
-                                const i = rowStart + (x * 4);
-                            if (data[i] > 230 && data[i + 1] > 230 && data[i + 2] > 230) {
-                                    data[i + 3] = 0;
-                                }
-                            }
-                        }
-                    }
-                    tCtx.putImageData(imgData, 0, 0);
-                    ctx.drawImage(tempC, 0, 0);
-                } catch (e) {
-                    ctx.drawImage(stagL1, 0, 0, w, h);
-                }
-            }
-
-            // 3. StagLayer2 (Draw As-Is)
-            const stagL2 = document.getElementById('stag-layer2');
-            if (stagL2) {
-                ctx.drawImage(stagL2, 0, 0, w, h);
-            }
-
-        } else if (frameId === '4') {
-            // FRAME 4: Chronicles (3 Layers: Photos + ChronLayer1 + ChronLayer2)
-            
-            // 1. Photos
-            drawPhotos();
-
-            // 2. ChronLayer1 (Remove White)
-            const chronL1 = document.getElementById('chron-layer1');
-            if (chronL1) {
-                const tempC = document.createElement('canvas');
-                tempC.width = w;
-                tempC.height = h;
-                const tCtx = tempC.getContext('2d');
-
-                tCtx.drawImage(chronL1, 0, 0, w, h);
-
-                try {
-                    const imgData = tCtx.getImageData(0, 0, w, h);
-                    const data = imgData.data;
-                    
-                    const padding = 80;
-                    const slotH = (h - (padding * (count + 1))) / count;
-
-                    for (let k = 0; k < count; k++) {
-                        const yStart = Math.floor(padding + (k * (slotH + padding)));
-                        const yEnd = Math.floor(yStart + slotH);
-                        const xStart = padding;
-                        const xEnd = w - padding;
-                        
-                        for (let y = yStart; y < yEnd; y++) {
-                            const rowStart = y * w * 4;
-                            for (let x = xStart; x < xEnd; x++) {
-                                const i = rowStart + (x * 4);
-                                if (data[i] > 230 && data[i + 1] > 230 && data[i + 2] > 230) {
-                                    data[i + 3] = 0;
-                                }
-                            }
-                        }
-                    }
-                    tCtx.putImageData(imgData, 0, 0);
-                    ctx.drawImage(tempC, 0, 0);
-                } catch (e) {
-                    ctx.drawImage(chronL1, 0, 0, w, h);
-                }
-            }
-
-            // 3. ChronLayer2 (Draw As-Is)
-            const chronL2 = document.getElementById('chron-layer2');
-            if (chronL2) {
-                ctx.drawImage(chronL2, 0, 0, w, h);
-            }
-
+    triggerFlash();
+    captureVideoFrame();
+
+    const photosCaptured = capturedPhotos.length;
+    if (hudShotCounter) hudShotCounter.innerText = `${photosCaptured} of 6 Captured`;
+
+    if (photosCaptured === 6) {
+        startBtn.disabled = true;
+        startBtnLabel.innerText = "All 6 Photos Captured";
+        if (hudShotCounter) hudShotCounter.innerText = "6 of 6 Complete";
+        buildSelectionGallery();
+        goToStage(2);
+        return;
+    }
+
+    startBtnLabel.innerText = `Capture Photo ${photosCaptured + 1} of 6`;
+};
+
+// ==========================================================================
+// Step 2: Photo Selection Gallery
+// ==========================================================================
+function buildSelectionGallery() {
+    selectionGrid.innerHTML = "";
+    selectedSlotIndices = [0, 1, 2]; // Default select first 3
+
+    capturedPhotos.forEach((photoCanvas, idx) => {
+        const card = document.createElement("div");
+        card.className = "photo-card";
+        card.dataset.index = idx;
+
+        const img = document.createElement("img");
+        img.src = photoCanvas.toDataURL("image/jpeg", 0.9);
+
+        const orderBadge = document.createElement("div");
+        orderBadge.className = "order-badge";
+
+        const assignedPos = selectedSlotIndices.indexOf(idx);
+        if (assignedPos !== -1) {
+            card.classList.add("selected");
+            orderBadge.innerText = assignedPos + 1;
+            orderBadge.style.display = "flex";
         } else {
-            // ALL OTHER FRAMES (Standard Mode)
-            
-            // 1. Photos
-            drawPhotos();
-
-            // 2. Foreground Frame
-            drawImageFit(currentFrameImg);
+            orderBadge.style.display = "none";
         }
+
+        card.onclick = () => {
+            const foundIdx = selectedSlotIndices.indexOf(idx);
+            if (foundIdx !== -1) {
+                // Deselect photo
+                selectedSlotIndices.splice(foundIdx, 1);
+            } else {
+                if (selectedSlotIndices.length < 3) {
+                    selectedSlotIndices.push(idx);
+                } else {
+                    // Shift FIFO to keep 3
+                    selectedSlotIndices.shift();
+                    selectedSlotIndices.push(idx);
+                }
+            }
+            refreshGalleryBadges();
+        };
+
+        card.appendChild(img);
+        card.appendChild(orderBadge);
+        selectionGrid.appendChild(card);
+    });
+}
+
+function refreshGalleryBadges() {
+    const cards = selectionGrid.querySelectorAll(".photo-card");
+    cards.forEach((card) => {
+        const idx = parseInt(card.dataset.index, 10);
+        const badge = card.querySelector(".order-badge");
+        const pos = selectedSlotIndices.indexOf(idx);
+        if (pos !== -1) {
+            card.classList.add("selected");
+            badge.innerText = pos + 1;
+            badge.style.display = "flex";
+        } else {
+            card.classList.remove("selected");
+            badge.style.display = "none";
+        }
+    });
+}
+
+btnRetake.onclick = () => {
+    capturedPhotos = [];
+    selectedSlotIndices = [0, 1, 2];
+    startBtn.disabled = false;
+    startBtnLabel.innerText = "Capture Photo 1 of 6";
+    if (hudShotCounter) hudShotCounter.innerText = "0 of 6 Captured";
+    goToStage(1);
+};
+
+confirmSelectionBtn.onclick = () => {
+    if (selectedSlotIndices.length !== 3) {
+        alert("Please select exactly 3 photos for your photobooth strip.");
+        return;
     }
+    goToStage(3);
+};
 
-    downloadBtn.onclick = () => {
-        const printCanvas = document.createElement('canvas');
-        const printCtx = printCanvas.getContext('2d');
-        const gap = 3;
+// ==========================================================================
+// Step 3: Studio Customizer Engine
+// ==========================================================================
+function renderStudio() {
+    buildPhotoTray();
+    updateSlotOverlayUI();
+    renderStrip();
+}
 
-        // Create 2 copies side-by-side (Matches 102x152mm / 4x6" aspect ratio)
-        printCanvas.width = (canvas.width * 2) + gap;
-        printCanvas.height = canvas.height;
+function updateSlotOverlayUI() {
+    const frameId = currentFrameImg ? currentFrameImg.dataset.id : "pb-01";
+    const windows = customFrameWindowMap[frameId] || standardFrameWindows;
+    slotHotspots.forEach((hotspot, idx) => {
+        const [x1, y1, x2, y2] = windows[idx];
+        const selected = idx === activeReplacingSlot;
+        hotspot.classList.toggle("active", selected);
+        hotspot.classList.remove("drop-target");
+        hotspot.setAttribute("aria-pressed", String(selected));
+        hotspot.setAttribute(
+            "aria-label",
+            `Select slot ${idx + 1}, currently showing photo ${selectedSlotIndices[idx] + 1}`,
+        );
+        hotspot.style.left = `${(x1 / 800) * 100}%`;
+        hotspot.style.top = `${(y1 / 2400) * 100}%`;
+        hotspot.style.width = `${((x2 - x1) / 800) * 100}%`;
+        hotspot.style.height = `${((y2 - y1) / 2400) * 100}%`;
+    });
+    if (activeSlotLabel) {
+        activeSlotLabel.innerText = `Slot ${activeReplacingSlot + 1} selected`;
+    }
+}
 
-        printCtx.fillStyle = 'white';
-        printCtx.fillRect(0, 0, printCanvas.width, printCanvas.height);
+function selectTargetSlot(slotIndex) {
+    activeReplacingSlot = slotIndex;
+    updateSlotOverlayUI();
+    buildPhotoTray();
+}
 
-        printCtx.drawImage(canvas, 0, 0);
-        printCtx.drawImage(canvas, canvas.width + gap, 0);
+function replaceSlotPhoto(slotIndex, photoIndex) {
+    if (!Number.isInteger(photoIndex) || photoIndex < 0 || photoIndex >= capturedPhotos.length) return;
+    const previousPhoto = selectedSlotIndices[slotIndex];
+    const previousSlot = selectedSlotIndices.indexOf(photoIndex);
+    if (previousSlot >= 0 && previousSlot !== slotIndex) {
+        selectedSlotIndices[previousSlot] = previousPhoto;
+    }
+    selectedSlotIndices[slotIndex] = photoIndex;
+    activeReplacingSlot = slotIndex;
+    updateSlotOverlayUI();
+    buildPhotoTray();
+    renderStrip();
+}
 
-        const link = document.createElement('a');
-        link.download = `photobooth_${Date.now()}.jpg`;
-        link.href = printCanvas.toDataURL('image/jpeg', 0.95);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+slotHotspots.forEach((hotspot) => {
+    hotspot.onclick = () => selectTargetSlot(parseInt(hotspot.dataset.slot, 10));
+    hotspot.ondragover = (event) => {
+        event.preventDefault();
+        hotspot.classList.add("drop-target");
     };
+    hotspot.ondragleave = () => hotspot.classList.remove("drop-target");
+    hotspot.ondrop = (event) => {
+        event.preventDefault();
+        const photoIndex = parseInt(event.dataTransfer.getData("text/plain"), 10);
+        replaceSlotPhoto(parseInt(hotspot.dataset.slot, 10), photoIndex);
+    };
+});
+
+function buildPhotoTray() {
+    photoPool.innerHTML = "";
+    capturedPhotos.forEach((photoCanvas, idx) => {
+        const item = document.createElement("button");
+        item.type = "button";
+        item.draggable = true;
+        item.className = "tray-photo";
+        item.setAttribute("aria-label", `Use photo ${idx + 1} in slot ${activeReplacingSlot + 1}`);
+        if (selectedSlotIndices[activeReplacingSlot] === idx) {
+            item.classList.add("active-in-slot");
+        } else if (selectedSlotIndices.includes(idx)) {
+            item.classList.add("is-assigned");
+        }
+
+        const img = document.createElement("img");
+        img.src = photoCanvas.toDataURL("image/jpeg", 0.85);
+        img.alt = `Captured photo ${idx + 1}`;
+
+        const caption = document.createElement("span");
+        caption.className = "tray-caption";
+        const assignment = selectedSlotIndices.indexOf(idx);
+        caption.innerText =
+            assignment === activeReplacingSlot
+                ? `Photo ${idx + 1} · Current`
+                : assignment >= 0
+                  ? `Photo ${idx + 1} · Slot ${assignment + 1}`
+                  : `Photo ${idx + 1}`;
+
+        item.onclick = () => replaceSlotPhoto(activeReplacingSlot, idx);
+        item.ondragstart = (event) => {
+            event.dataTransfer.setData("text/plain", String(idx));
+            event.dataTransfer.effectAllowed = "move";
+        };
+        item.ondragend = () => slotHotspots.forEach((target) => target.classList.remove("drop-target"));
+
+        item.appendChild(img);
+        item.appendChild(caption);
+        photoPool.appendChild(item);
+    });
+}
+
+// Frame Selection Handling
+document.querySelectorAll("#frame-sidebar .frame-item").forEach((img) => {
+    const choice = document.createElement("button");
+    choice.type = "button";
+    choice.className = `frame-choice${img.classList.contains("selected") ? " selected" : ""}`;
+    choice.setAttribute("aria-label", img.title || "Choose frame");
+    choice.setAttribute("aria-pressed", String(img.classList.contains("selected")));
+
+    const label = document.createElement("span");
+    label.className = "frame-choice-label";
+    label.innerText = img.title || "Frame";
+    if (!img.alt) img.alt = `${img.title || "Photo"} frame preview`;
+    img.replaceWith(choice);
+    choice.append(img, label);
+
+    choice.onclick = () => {
+        document.querySelectorAll("#frame-sidebar .frame-choice").forEach((option) => {
+            const selected = option === choice;
+            option.classList.toggle("selected", selected);
+            option.setAttribute("aria-pressed", String(selected));
+            option.querySelector(".frame-item").classList.toggle("selected", selected);
+        });
+        currentFrameImg = img;
+        updateSlotOverlayUI();
+        renderStrip();
+    };
+});
+
+// Filter Chips Handling
+document.querySelectorAll(".filter-chip").forEach((chip) => {
+    chip.onclick = () => {
+        document.querySelectorAll(".filter-chip").forEach((c) => c.classList.remove("active"));
+        chip.classList.add("active");
+        currentFilter = chip.dataset.filter;
+        renderStrip();
+    };
+});
+
+// Multi-layer Photostrip Compositor
+function renderStrip() {
+    if (selectedSlotIndices.length !== 3 || capturedPhotos.length < 3) return;
+
+    const photosToRender = selectedSlotIndices.map((i) => capturedPhotos[i]);
+    const w = 800;
+    const h = 2400; // Standard 3-slot photobooth vertical ratio
+    canvas.width = w;
+    canvas.height = h;
+
+    const frameId = currentFrameImg ? currentFrameImg.dataset.id : "pb-01";
+
+    ctx.filter = "none";
+    ctx.fillStyle = "#000000";
+    ctx.fillRect(0, 0, w, h);
+
+    const drawPhotosInWindows = (windows) => {
+        photosToRender.forEach((photo, index) => {
+            const [x1, y1, x2, y2] = windows[index];
+            const destW = x2 - x1;
+            const destH = y2 - y1;
+            const sourceRatio = photo.width / photo.height;
+            const destRatio = destW / destH;
+            let sx = 0,
+                sy = 0,
+                sw = photo.width,
+                sh = photo.height;
+            if (sourceRatio > destRatio) {
+                sw = sh * destRatio;
+                sx = (photo.width - sw) / 2;
+            } else {
+                sh = sw / destRatio;
+                sy = (photo.height - sh) / 2;
+            }
+            ctx.save();
+            ctx.filter = currentFilter;
+            ctx.drawImage(photo, sx, sy, sw, sh, x1, y1, destW, destH);
+            ctx.restore();
+        });
+    };
+
+    const drawImageFit = (img) => {
+        if (!img) return;
+        ctx.drawImage(img, 0, 0, w, h);
+    };
+
+    const windows = customFrameWindowMap[frameId] || standardFrameWindows;
+    drawPhotosInWindows(windows);
+    drawImageFit(currentFrameImg);
+}
+
+// Stage 3 & 4 Navigation Buttons
+btnBackToSelect.onclick = () => goToStage(2);
+btnNext3.onclick = () => goToStage(4);
+btnBackToStudio.onclick = () => goToStage(3);
+btnRestart.onclick = () => {
+    if (activeStream) {
+        activeStream.getTracks().forEach((track) => track.stop());
+    }
+    location.reload();
+};
+
+// ==========================================================================
+// Step 4: High Resolution Print & Download
+// ==========================================================================
+downloadBtn.onclick = () => {
+    const printCanvas = document.createElement("canvas");
+    const printCtx = printCanvas.getContext("2d");
+    const gap = 4;
+
+    // Generates 2 strips side-by-side (Authentic 4x6" photobooth standard)
+    printCanvas.width = canvas.width * 2 + gap;
+    printCanvas.height = canvas.height;
+
+    printCtx.fillStyle = "#ffffff";
+    printCtx.fillRect(0, 0, printCanvas.width, printCanvas.height);
+
+    printCtx.drawImage(canvas, 0, 0);
+    printCtx.drawImage(canvas, canvas.width + gap, 0);
+
+    const downloadLink = document.createElement("a");
+    downloadLink.download = `BITS_Photobooth_${Date.now()}.png`;
+    downloadLink.href = printCanvas.toDataURL("image/png");
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+};
+
+sendEmailBtn.onclick = async () => {
+    if (!emailInput.reportValidity()) return;
+
+    sendEmailBtn.disabled = true;
+    sendEmailLabel.innerText = "Sending...";
+    emailStatus.innerText = "";
+    emailStatus.classList.remove("success", "error");
+
+    try {
+        const imageBase64 = canvas.toDataURL("image/png");
+        const response = await fetch(emailApiUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: emailInput.value, imageBase64 }),
+        });
+        const responseBody = await response.text();
+        let result;
+        try {
+            result = JSON.parse(responseBody);
+        } catch {
+            if (response.status === 404) {
+                throw new Error("The email service is unavailable. Start the app with npm start and try again.");
+            }
+            if (response.status === 413) {
+                throw new Error("The photostrip is too large to email. Please try again with a smaller image.");
+            }
+            throw new Error(
+                `The email service returned an unexpected response (HTTP ${response.status}). Check that the app server is running, then try again.`,
+            );
+        }
+
+        if (!response.ok) {
+            throw new Error(result.error || "Failed to send your photostrip.");
+        }
+        if (!result.success) {
+            throw new Error("The server could not confirm delivery. Please try again.");
+        }
+
+        emailStatus.innerText = "Your photostrip has been sent to your email.";
+        emailStatus.classList.add("success");
+    } catch (error) {
+        console.error("Photostrip email failed:", error);
+        emailStatus.innerText = error.message || "Unable to send your photostrip. Please try again.";
+        emailStatus.classList.add("error");
+    } finally {
+        sendEmailBtn.disabled = false;
+        sendEmailLabel.innerText = "Send";
+    }
+};
+
+// Auto-start camera on page ready
+window.addEventListener("DOMContentLoaded", () => {
+    initCameraStream();
+});

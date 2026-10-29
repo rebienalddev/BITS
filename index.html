@@ -3,193 +3,331 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TechnoBooth Pro</title>
+    <title>BITS Photobooth - Cavite State University</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<header class="header">
-    <div class="header-title">TechnoBooth</div>
-    <div class="steps">
-        <div class="step active" id="step-1"><div class="step-num">1</div> Select Frame</div>
-        <div class="step" id="step-2"><div class="step-num">2</div> Take a Pic</div>
-        <div class="step" id="step-3"><div class="step-num">3</div> Filter</div>
-        <div class="step" id="step-4"><div class="step-num">4</div> Download</div>
-    </div>
-</header>
-
-<div class="screens-wrapper">
-    <!-- SCREEN 1: Frame Selection -->
-    <div class="screen active" id="screen-1">
-        <div class="screen-header">
-            <h2 class="screen-title">Choose Your Frame</h2>
-            <p class="screen-subtitle">Select a design to start your session.</p>
-        </div>
-        <div class="frame-scroll-area">
-            <div class="frame-grid" id="frame-sidebar">
-                <img src="TechnoLayer1.png" class="frame-thumb" data-id="14" crossorigin="anonymous">
-     <img src="StudentCouncilLayer1.png" class="frame-thumb" data-id="2" crossorigin="anonymous">
-     <img src="StagLayer1.png" class="frame-thumb" data-id="3" crossorigin="anonymous">
-     <img src="ChronLayer1.png" class="frame-thumb" data-id="4" crossorigin="anonymous">
-     <img src="VigiLayer1.png" class="frame-thumb" data-id="13" crossorigin="anonymous">
-    
-
-     <img src="DonatoLayer1.png" class="frame-thumb" data-id="17" crossorigin="anonymous">
-     <img src="SanrioLayer1.png" class="frame-thumb" data-id="16" crossorigin="anonymous">
-     <img src="PinkLayer1.png" class="frame-thumb" data-id="6" crossorigin="anonymous">
-     <img src="MeanGirlsLayer1.png" class="frame-thumb" data-id="7" crossorigin="anonymous">
-     <img src="KittenLayer1.png" class="frame-thumb" data-id="8" crossorigin="anonymous">
-     <img src="BlueLayer1.png" class="frame-thumb" data-id="9" crossorigin="anonymous">
-     <img src="BlackLayer1.png" class="frame-thumb" data-id="10" crossorigin="anonymous">
-     <img src="NerdLayer1.png" class="frame-thumb" data-id="11" crossorigin="anonymous">
-     <img src="ReceiptLayer1.png" class="frame-thumb" data-id="12" crossorigin="anonymous">
-     <img src="ShrekLayer1.png" class="frame-thumb" data-id="15" crossorigin="anonymous">
+<div class="app-shell">
+    <!-- Compact, elegant application header -->
+    <header class="app-header">
+        <div class="brand-group">
+            <div class="brand-logo-frame">
+                <img src="assets/BITSLOGO.jpg" alt="BITS Logo" class="brand-logo">
+            </div>
+            <div class="brand-text">
+                <span class="brand-name">BITS Photobooth</span>
+                <span class="brand-subtext">Cavite State University</span>
             </div>
         </div>
-        <div class="action-bar">
-            <button id="btn-next-1" class="btn">Next Step: Take Photos</button>
-        </div>
-    </div>
 
-    <!-- SCREEN 2: Camera -->
-    <div class="screen" id="screen-2">
-        <div class="screen-header">
-            <h2 class="screen-title">Strike a Pose!</h2>
-            <p class="screen-subtitle">Get ready, you'll take 6 photos in a row.</p>
-        </div>
-        <div class="camera-workspace">
-            <div class="camera-container">
-                <video id="camera-view" autoplay playsinline></video>
-                <div id="camera-guide"></div>
+        <!-- 4-step progress stepper -->
+        <nav class="stepper-nav" aria-label="Photobooth workflow steps">
+            <div class="step-node active" id="step-node-1">
+                <div class="step-indicator">
+                    <span class="step-num">1</span>
+                    <span class="step-check">&#10003;</span>
+                </div>
+                <span class="step-label">Capture</span>
+            </div>
+            <div class="step-divider" aria-hidden="true"></div>
+
+            <div class="step-node" id="step-node-2">
+                <div class="step-indicator">
+                    <span class="step-num">2</span>
+                    <span class="step-check">&#10003;</span>
+                </div>
+                <span class="step-label">Select</span>
+            </div>
+            <div class="step-divider" aria-hidden="true"></div>
+
+            <div class="step-node" id="step-node-3">
+                <div class="step-indicator">
+                    <span class="step-num">3</span>
+                    <span class="step-check">&#10003;</span>
+                </div>
+                <span class="step-label">Studio</span>
+            </div>
+            <div class="step-divider" aria-hidden="true"></div>
+
+            <div class="step-node" id="step-node-4">
+                <div class="step-indicator">
+                    <span class="step-num">4</span>
+                    <span class="step-check">&#10003;</span>
+                </div>
+                <span class="step-label">Print</span>
+            </div>
+        </nav>
+
+        <div class="header-action-group">
+            <div class="device-pill" id="camera-status-pill">
+                <span class="pulse-dot"></span>
+                <span class="pill-label" id="camera-status-text">Camera Ready</span>
             </div>
         </div>
-        <div class="action-bar">
-            <button id="start-btn" class="btn">Start Shoot</button>
-        </div>
-    </div>
+    </header>
 
-    <!-- SCREEN 3: Filters -->
-    <div class="screen" id="screen-3">
-        <div class="screen-header">
-            <h2 class="screen-title">Apply a Filter</h2>
-            <p class="screen-subtitle">Enhance your photos before saving.</p>
-        </div>
-        <div class="filter-workspace">
-            <div class="canvas-showcase" id="canvas-wrapper-3">
-                <canvas id="final-canvas"></canvas>
-            </div>
-            <div class="filter-sidebar" id="filter-container">
-                <button class="filter-btn active" data-filter="none">Natural</button>
-            <button class="filter-btn" data-filter="grayscale(1) contrast(1.2)">B&W</button>
-            <button class="filter-btn" data-filter="sepia(0.6) brightness(1.1)">Vintage</button>
-            <button class="filter-btn" data-filter="contrast(1.5) saturate(1.5)">High-Key</button>
-            <button class="filter-btn" data-filter="hue-rotate(180deg) brightness(1.2)">Psychedelic</button>
-            <button class="filter-btn" data-filter="brightness(1.3) contrast(0.9) saturate(0.8)">Soft Pastel</button>
-            </div>
-        </div>
-        <div class="action-bar">
-            <button id="btn-next-3" class="btn">Next: Save & Download</button>
-        </div>
-    </div>
+    <!-- Main Screens Container -->
+    <main class="app-content">
 
-    <!-- SCREEN 4: Preview & Download -->
-    <div class="screen" id="screen-4">
-        <div class="screen-header">
-            <h2 class="screen-title">Your Photos are Ready!</h2>
-            <p class="screen-subtitle">Save your strip or start a new session.</p>
-        </div>
-        <div class="final-workspace" id="canvas-wrapper-4">
-            <!-- Canvas moved here -->
-        </div>
-        <div class="action-bar" style="gap: 20px;">
-            <button id="download-btn" class="btn" style="display:none;">Download Photos</button>
-            <button id="btn-restart" class="btn btn-secondary">Start Over</button>
-        </div>
-    </div>
+        <!-- ========================================================
+             STEP 1: CAPTURE SCREEN
+             ======================================================== -->
+        <section class="stage-view active" id="view-capture" aria-labelledby="heading-capture">
+            <div class="stage-intro">
+                <h1 class="stage-title" id="heading-capture">Strike Your Pose</h1>
+                <p class="stage-subtitle">Click once for each photo. Capture six photos to continue.</p>
+            </div>
+
+            <div class="capture-workspace">
+                <div class="viewport-card" id="camera-card">
+                    <!-- Live Camera Feed -->
+                    <video id="camera-view" autoplay playsinline muted></video>
+
+                    <!-- Professional Proportional Crop Overlay -->
+                    <div id="crop-guide" class="crop-guide-container">
+                        <div class="guide-box">
+                            <span class="corner-mark top-left"></span>
+                            <span class="corner-mark top-right"></span>
+                            <span class="corner-mark bottom-left"></span>
+                            <span class="corner-mark bottom-right"></span>
+                            <div class="center-crosshair"></div>
+                        </div>
+                    </div>
+
+                    <!-- Clean Camera HUD Badges -->
+                    <div class="hud-layer">
+                        <div class="hud-badge session-badge">
+                            <span class="rec-indicator"></span>
+                            <span>LIVE FEED</span>
+                        </div>
+                        <div class="hud-badge counter-badge" id="hud-shot-counter">
+                            <span>0 of 6 Captured</span>
+                        </div>
+                        <div class="cam-dropdown-wrap" id="cam-dropdown-wrap">
+                            <button type="button" id="switch-camera-btn" class="hud-camera-switch" title="Select Camera" aria-label="Select Camera" aria-expanded="false" aria-haspopup="listbox">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                                    <circle cx="12" cy="13" r="4"/>
+                                </svg>
+                                <span id="switch-camera-label">Camera</span>
+                                <svg class="cam-chevron" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="6 9 12 15 18 9"/>
+                                </svg>
+                            </button>
+                            <ul class="cam-dropdown-menu" id="cam-dropdown-menu" role="listbox" aria-label="Available cameras"></ul>
+                        </div>
+                    </div>
+
+                    <!-- Graceful Error / Permissions Fallback Banner -->
+                    <div id="camera-error-banner" class="camera-fallback" style="display:none;">
+                        <div class="fallback-icon">&#9888;</div>
+                        <h2 class="fallback-title">Camera Access Required</h2>
+                        <p class="fallback-desc" id="camera-error-msg">Please grant browser permissions to your webcam to start your photobooth session.</p>
+                        <button type="button" class="btn btn-secondary btn-sm" id="btn-retry-camera">Retry Connection</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stage-toolbar">
+                <button type="button" id="start-btn" class="btn btn-primary btn-capture">
+                    <svg class="btn-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M4 4h3l2-2h6l2 2h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm8 3a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6z"/>
+                    </svg>
+                    <span id="start-btn-label">Capture Photo 1 of 6</span>
+                </button>
+            </div>
+        </section>
+
+
+        <!-- ========================================================
+             STEP 2: SELECT SCREEN
+             ======================================================== -->
+        <section class="stage-view" id="view-select" aria-labelledby="heading-select">
+            <div class="stage-intro">
+                <h1 class="stage-title" id="heading-select">Select Your Best 3</h1>
+                <p class="stage-subtitle">Click 3 photos in the order you want them arranged on your strip (Slots 1, 2, and 3).</p>
+            </div>
+
+            <div class="select-workspace">
+                <div id="selection-grid" class="gallery-cards-grid"></div>
+            </div>
+
+            <div class="stage-toolbar">
+                <button type="button" id="btn-retake" class="btn btn-secondary">
+                    <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4V1L8 5l4 4V6a6 6 0 1 1-6 6H4a8 8 0 1 0 8-8z"/></svg>
+                    Retake All Photos
+                </button>
+                <button type="button" id="confirm-selection-btn" class="btn btn-primary">
+                    <span>Continue to Studio</span>
+                    <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M5 13h11.86l-5.43 5.43 1.42 1.42L21.14 12l-8.29-7.85-1.42 1.42L16.86 11H5v2z"/></svg>
+                </button>
+            </div>
+        </section>
+
+
+        <!-- ========================================================
+             STEP 3: STUDIO CUSTOMIZER SCREEN
+             ======================================================== -->
+        <section class="stage-view" id="view-studio" aria-labelledby="heading-studio">
+            <div class="studio-layout">
+                <!-- Left: Live Photostrip Canvas Showcase -->
+                <div class="studio-canvas-column">
+                    <div class="studio-preview-header">
+                        <strong>Strip preview</strong>
+                        <span>Three photos, top to bottom</span>
+                    </div>
+                    <div class="strip-easel">
+                        <div class="strip-easel-inner" id="canvas-wrapper-3">
+                            <canvas id="final-canvas"></canvas>
+                            <div class="slot-overlay-map" id="slot-overlay-layer" aria-label="Click a photo area to choose a slot">
+                                <button type="button" class="slot-hotspot active" data-slot="0" aria-label="Select slot 1">
+                                    <span class="hotspot-badge">Slot 1</span>
+                                </button>
+                                <button type="button" class="slot-hotspot" data-slot="1" aria-label="Select slot 2">
+                                    <span class="hotspot-badge">Slot 2</span>
+                                </button>
+                                <button type="button" class="slot-hotspot" data-slot="2" aria-label="Select slot 3">
+                                    <span class="hotspot-badge">Slot 3</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Tool Suite Sidebar -->
+                <aside class="studio-tool-column">
+                    <div class="studio-sidebar-heading">
+                        <h1>Customize your strip</h1>
+                        <p>Your changes appear in the preview.</p>
+                    </div>
+                    <!-- Drawer 1: Swap Photo into Selected Slot -->
+                    <div class="tool-panel">
+                        <div class="panel-header">
+                            <div>
+                                <h2 class="panel-title">Choose photos for your strip</h2>
+                                <p class="panel-desc">Click a photo area on the preview, then choose a photo below or drag it onto a slot.</p>
+                            </div>
+                            <span class="active-slot-pill" id="active-slot-label">Slot 1</span>
+                        </div>
+                        <div class="tray-pool-grid" id="photo-pool"></div>
+                    </div>
+
+                    <!-- Drawer 2: Frame Templates -->
+                    <div class="tool-panel">
+                        <div class="panel-header">
+                            <div>
+                                <h2 class="panel-title">Frame</h2>
+                                <p class="panel-desc">Choose a design for your strip.</p>
+                            </div>
+                        </div>
+                        <div class="frame-scroll-rack" id="frame-sidebar">
+                            <img src="assets/frames/PB01.png" class="frame-item selected" data-id="pb-01" crossorigin="anonymous" title="Emerald">
+                            <img src="assets/frames/PB02.png" class="frame-item" data-id="pb-02" crossorigin="anonymous" title="Midnight Floral">
+                            <img src="assets/frames/PB03.png" class="frame-item" data-id="pb-03" crossorigin="anonymous" title="Mean Girls">
+                            <img src="assets/frames/PB04.png" class="frame-item" data-id="pb-04" crossorigin="anonymous" title="Kitten">
+                            <img src="assets/frames/PB05.png" class="frame-item" data-id="pb-05" crossorigin="anonymous" title="Stitch">
+                            <img src="assets/frames/PB06.png" class="frame-item" data-id="pb-06" crossorigin="anonymous" title="Bunny Blue">
+                            <img src="assets/frames/PB07.png" class="frame-item" data-id="pb-07" crossorigin="anonymous" title="Kawaii">
+                            <img src="assets/frames/PB08.png" class="frame-item" data-id="pb-08" crossorigin="anonymous" title="Bunny Beige">
+                            <img src="assets/frames/PB09.png" class="frame-item" data-id="pb-09" crossorigin="anonymous" title="Le Juifvin">
+                            <img src="assets/frames/PB10.png" class="frame-item" data-id="pb-10" crossorigin="anonymous" title="Blush">
+                            <img src="assets/frames/PB11.png" class="frame-item" data-id="pb-11" crossorigin="anonymous" title="Sky Blue">
+                            <img src="assets/frames/PB12.png" class="frame-item" data-id="pb-12" crossorigin="anonymous" title="Berry">
+                            <img src="assets/frames/PB13.png" class="frame-item" data-id="pb-13" crossorigin="anonymous" title="Sage">
+                            <img src="assets/frames/PB14.png" class="frame-item" data-id="pb-14" crossorigin="anonymous" title="Pink Bear">
+                        </div>
+                    </div>
+
+                    <!-- Drawer 3: Filter Presets -->
+                    <div class="tool-panel">
+                        <div class="panel-header">
+                            <div>
+                                <h2 class="panel-title">Photo Filter</h2>
+                                <p class="panel-desc">Optional; applies to all photos.</p>
+                            </div>
+                        </div>
+                        <div class="filter-tab-grid" id="filter-container">
+                            <button type="button" class="filter-chip active" data-filter="none">Natural</button>
+                            <button type="button" class="filter-chip" data-filter="grayscale(1) contrast(1.25)">Monochrome</button>
+                            <button type="button" class="filter-chip" data-filter="sepia(0.55) brightness(1.08)">Vintage</button>
+                            <button type="button" class="filter-chip" data-filter="contrast(1.4) saturate(1.4)">Vivid</button>
+                            <button type="button" class="filter-chip" data-filter="hue-rotate(180deg) brightness(1.15)">Cyber</button>
+                            <button type="button" class="filter-chip" data-filter="brightness(1.25) contrast(0.9) saturate(0.85)">Soft Glow</button>
+                        </div>
+                    </div>
+                </aside>
+            </div>
+
+            <div class="stage-toolbar">
+                <button type="button" id="btn-back-to-select" class="btn btn-secondary">
+                    <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 11H7.14l5.43-5.43-1.42-1.42L2.86 12l8.29 7.85 1.42-1.42L7.14 13H19v-2z"/></svg>
+                    Back to Select
+                </button>
+                <button type="button" id="btn-next-3" class="btn btn-primary">
+                    <span>Review & Print</span>
+                    <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M5 13h11.86l-5.43 5.43 1.42 1.42L21.14 12l-8.29-7.85-1.42 1.42L16.86 11H5v2z"/></svg>
+                </button>
+            </div>
+        </section>
+
+
+        <!-- ========================================================
+             STEP 4: PRINT & DOWNLOAD SCREEN
+             ======================================================== -->
+        <section class="stage-view" id="view-print" aria-labelledby="heading-print">
+            <div class="stage-intro">
+                <h1 class="stage-title" id="heading-print">Your Photostrip Is Ready</h1>
+                <p class="stage-subtitle">Download your strip or send it straight to your email.</p>
+            </div>
+
+            <div class="print-workspace">
+                <div class="print-easel" id="canvas-wrapper-4">
+                    <!-- Final Canvas mounted here dynamically -->
+                </div>
+
+                <!-- Email delivery card -->
+                <div class="email-delivery-card">
+                    <div class="email-card-header">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                        <span>Send to Email</span>
+                    </div>
+                    <p class="email-card-desc">We'll deliver your photostrip as a PNG attachment.</p>
+                    <div class="email-input-row">
+                        <input type="email" id="email-input" class="email-field" placeholder="your@email.com" autocomplete="email" aria-label="Email address" required />
+                        <button type="button" id="send-email-btn" class="btn btn-accent">
+                            <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21 23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                            <span id="send-email-label">Send</span>
+                        </button>
+                    </div>
+                    <div class="email-status" id="email-status" role="status" aria-live="polite"></div>
+                </div>
+            </div>
+
+            <div class="stage-toolbar">
+                <button type="button" id="btn-back-to-studio" class="btn btn-secondary">
+                    <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                    Edit Strip
+                </button>
+                <button type="button" id="download-btn" class="btn btn-primary">
+                    <svg class="btn-icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                    <span>Download Strip (PNG)</span>
+                </button>
+                <button type="button" id="btn-restart" class="btn btn-secondary">
+                    New Session
+                </button>
+            </div>
+        </section>
+    </main>
+
 </div>
 
-<!-- SELECTION MODAL -->
-<div id="selection-screen">
-    <div class="selection-modal">
-        <h3>Select Your Best 3 Photos</h3>
-        <div id="selection-grid"></div>
-        <button id="confirm-selection-btn" class="btn">Create Strip</button>
-    </div>
-</div>
-
-<div id="flash"></div>
-
-<div style="display:none;">
-    <img src="DonatoLayer1.png" id="donato-layer1" style="display:none;" crossorigin="anonymous">
-    
-    <img src="StudentCouncilLayer2.png" id="layer2-img" style="display:none;" crossorigin="anonymous">
-    <img src="StudentCouncilLayer1.png" id="sc-overlay" style="display:none;" crossorigin="anonymous">
-    <img src="StagLayer2.png" id="stag-layer2" style="display:none;" crossorigin="anonymous">
-    <img src="StagLayer1.png" id="stag-layer1" style="display:none;" crossorigin="anonymous">
-    <img src="ChronLayer1.png" id="chron-layer1" style="display:none;" crossorigin="anonymous">
-    <img src="ChronLayer2.png" id="chron-layer2" style="display:none;" crossorigin="anonymous">
-    <img src="PinkLayer1.png" id="pink-layer1" style="display:none;" crossorigin="anonymous">
-    <img src="PinkLayer2.png" id="pink-layer2" style="display:none;" crossorigin="anonymous">
-    <img src="MeanGirlsLayer1.png" id="mg-layer1" style="display:none;" crossorigin="anonymous">
-    <img src="MeanGirlsLayer2.png" id="mg-layer2" style="display:none;" crossorigin="anonymous">
-    <img src="KittenLayer1.png" id="kitten-layer1" style="display:none;" crossorigin="anonymous">
-    <img src="KittenLayer2.png" id="kitten-layer2" style="display:none;" crossorigin="anonymous">
-    <img src="BlueLayer1.png" id="blue-layer1" style="display:none;" crossorigin="anonymous">
-    <img src="BlueLayer2.png" id="blue-layer2" style="display:none;" crossorigin="anonymous">
-    <img src="BlackLayer1.png" id="black-layer1" style="display:none;" crossorigin="anonymous">
-    <img src="BlackLayer2.png" id="black-layer2" style="display:none;" crossorigin="anonymous">
-    <img src="NerdLayer1.png" id="nerd-layer1" style="display:none;" crossorigin="anonymous">
-    <img src="NerdLayer2.png" id="nerd-layer2" style="display:none;" crossorigin="anonymous">
-    <img src="ReceiptLayer1.png" id="receipt-layer1" style="display:none;" crossorigin="anonymous">
-    <img src="ReceiptLayer2.png" id="receipt-layer2" style="display:none;" crossorigin="anonymous">
-    <img src="VigiLayer1.png" id="vigi-layer1" style="display:none;" crossorigin="anonymous">
-    <img src="VigiLayer2.png" id="vigi-layer2" style="display:none;" crossorigin="anonymous">
-    <img src="TechnoLayer1.png" id="techno-layer1" style="display:none;" crossorigin="anonymous">
-    
-    <img src="ShrekLayer1.png" id="shrek-layer1" style="display:none;" crossorigin="anonymous">
-    <img src="ShrekLayer2.png" id="shrek-layer2" style="display:none;" crossorigin="anonymous">
-    <img src="SanrioLayer1.png" id="sanrio-layer1" style="display:none;" crossorigin="anonymous">
-    <img src="SanrioLayer2.png" id="sanrio-layer2" style="display:none;" crossorigin="anonymous">
-</div>
+<!-- Flash Animation Element -->
+<div id="flash" aria-hidden="true"></div>
 
 <script src="script.js"></script>
-<script>
-    const screens = document.querySelectorAll('.screen');
-    const steps = document.querySelectorAll('.step');
-
-    function goToScreen(num) {
-        screens.forEach((s, i) => s.classList.toggle('active', i + 1 === num));
-        steps.forEach((s, i) => s.classList.toggle('active', i + 1 <= num));
-        
-        if (num === 2) {
-            window.dispatchEvent(new Event('resize'));
-        }
-        if (num === 4) {
-            document.getElementById('canvas-wrapper-4').appendChild(document.getElementById('final-canvas'));
-            document.getElementById('download-btn').style.display = 'inline-flex';
-        }
-    }
-
-    document.getElementById('btn-next-1').addEventListener('click', () => {
-        if (!document.querySelector('.frame-thumb.selected')) {
-            alert('Please select a frame design to continue!');
-            return;
-        }
-        goToScreen(2);
-    });
-    document.getElementById('btn-next-3').addEventListener('click', () => goToScreen(4));
-    document.getElementById('btn-restart').addEventListener('click', () => location.reload());
-
-    const originalConfirm = document.getElementById('confirm-selection-btn').onclick;
-    document.getElementById('confirm-selection-btn').onclick = (e) => {
-        const selectedCount = document.querySelectorAll('.selection-thumb.selected').length;
-        if (selectedCount !== 3) {
-            alert('Please select exactly 3 photos.');
-            return;
-        }
-        originalConfirm.call(document.getElementById('confirm-selection-btn'), e);
-        goToScreen(3);
-    };
-</script>
 </body>
 </html>
