@@ -497,36 +497,41 @@ startBtn.onclick = async () => {
         return;
     }
 
-    if (countdownBtn.getAttribute("aria-pressed") === "true") {
-        if (!countdownBtn.disabled) countdownBtn.disabled = true;
-        const ok = await countdownTick(3);
-        countdownBtn.disabled = false;
-        if (!ok) {
-            countdownCanceled = false;
-            if (hudShotCounter) hudShotCounter.innerText = `${capturedPhotos.length} of 6 Captured`;
-            startBtnLabel.innerText = remainingStatusLabel();
-            startBtn.disabled = false;
+    const autoShooting = countdownBtn.getAttribute("aria-pressed") === "true";
+    if (autoShooting && !countdownBtn.disabled) countdownBtn.disabled = true;
+
+    while (capturedPhotos.length < 6) {
+        if (autoShooting) {
+            const ok = await countdownTick(3);
+            if (!ok) {
+                countdownCanceled = false;
+                if (hudShotCounter) hudShotCounter.innerText = `${capturedPhotos.length} of 6 Captured`;
+                startBtnLabel.innerText = remainingStatusLabel();
+                if (!countdownBtn.disabled) countdownBtn.disabled = false;
+                startBtn.disabled = false;
+                return;
+            }
+        }
+
+        triggerFlash();
+        captureVideoFrame();
+
+        const photosCaptured = capturedPhotos.length;
+        if (hudShotCounter) hudShotCounter.innerText = `${photosCaptured} of 6 Captured`;
+
+        if (photosCaptured === 6) {
+            startBtn.disabled = true;
+            startBtnLabel.innerText = "All 6 Photos Captured";
+            if (hudShotCounter) hudShotCounter.innerText = "6 of 6 Complete";
+            buildSelectionGallery();
+            goToStage(2);
             return;
         }
+
+        startBtnLabel.innerText = `Capture Photo ${photosCaptured + 1} of 6`;
     }
 
-    triggerFlash();
-    captureVideoFrame();
-
-    const photosCaptured = capturedPhotos.length;
-    if (hudShotCounter) hudShotCounter.innerText = `${photosCaptured} of 6 Captured`;
-
-    if (photosCaptured === 6) {
-        startBtn.disabled = true;
-        startBtnLabel.innerText = "All 6 Photos Captured";
-        if (hudShotCounter) hudShotCounter.innerText = "6 of 6 Complete";
-        buildSelectionGallery();
-        goToStage(2);
-        return;
-    }
-
-    startBtnLabel.innerText = `Capture Photo ${photosCaptured + 1} of 6`;
-    startBtn.disabled = false;
+    if (!autoShooting) startBtn.disabled = false;
 };
 
 function buildSelectionGallery() {
