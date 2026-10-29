@@ -58,80 +58,105 @@ let capturedPhotos = [];
 let selectedSlotIndices = [0, 1, 2];
 let activeReplacingSlot = 0;
 let currentFilter = "none";
-let currentFrameImg = document.querySelector(".frame-item.selected") || document.querySelector(".frame-item");
+let currentFrameImg = null;
 
-const customFrameWindowMap = {
-    "pb-01": [
-        [126, 193, 680, 754],
-        [128, 912, 683, 1473],
-        [117, 1683, 672, 2244],
-    ],
-    "pb-02": [
-        [108, 141, 641, 756],
-        [135, 906, 662, 1494],
-        [135, 1675, 653, 2261],
-    ],
-    "pb-03": [
-        [149, 129, 677, 669],
-        [154, 904, 682, 1444],
-        [154, 1675, 682, 2300],
-    ],
-    "pb-04": [
-        [164, 119, 632, 734],
-        [164, 890, 639, 1504],
-        [164, 1645, 636, 2262],
-    ],
-    "pb-05": [
-        [118, 180, 692, 741],
-        [116, 894, 690, 1513],
-        [118, 1665, 692, 2283],
-    ],
-    "pb-06": [
-        [118, 122, 692, 742],
-        [118, 894, 690, 1514],
-        [118, 1665, 692, 2285],
-    ],
-    "pb-07": [
-        [118, 122, 692, 742],
-        [118, 890, 692, 1510],
-        [118, 1665, 692, 2285],
-    ],
-    "pb-08": [
-        [118, 122, 692, 742],
-        [118, 890, 692, 1510],
-        [118, 1665, 692, 2285],
-    ],
-    "pb-09": [
-        [118, 124, 692, 739],
-        [118, 892, 693, 1507],
-        [110, 1668, 693, 2282],
-    ],
-    "pb-10": [
-        [118, 122, 692, 742],
-        [118, 890, 692, 1510],
-        [118, 1665, 692, 2285],
-    ],
-    "pb-11": [
-        [118, 122, 692, 741],
-        [118, 890, 692, 1510],
-        [118, 1665, 692, 2285],
-    ],
-    "pb-12": [
-        [118, 122, 692, 741],
-        [118, 890, 692, 1510],
-        [118, 1665, 692, 2285],
-    ],
-    "pb-13": [
-        [118, 122, 692, 741],
-        [118, 890, 692, 1510],
-        [118, 1665, 692, 2285],
-    ],
-    "pb-14": [
-        [118, 122, 692, 742],
-        [118, 890, 692, 1510],
-        [118, 1665, 692, 2285],
-    ],
-};
+const DEFAULT_WINDOW_SET = [118, 122, 692, 742];
+
+const FRAMES = [
+    {
+        title: "Emerald",
+        windows: [
+            [126, 193, 680, 754],
+            [128, 912, 683, 1473],
+            [117, 1683, 672, 2244],
+        ],
+    },
+    {
+        title: "Midnight Floral",
+        windows: [
+            [108, 141, 641, 756],
+            [135, 906, 662, 1494],
+            [135, 1675, 653, 2261],
+        ],
+    },
+    {
+        title: "Mean Girls",
+        windows: [
+            [149, 129, 677, 669],
+            [154, 904, 682, 1444],
+            [154, 1675, 682, 2300],
+        ],
+    },
+    {
+        title: "Kitten",
+        windows: [
+            [164, 119, 632, 734],
+            [164, 890, 639, 1504],
+            [164, 1645, 636, 2262],
+        ],
+    },
+    {
+        title: "Stitch",
+        windows: [
+            [118, 180, 692, 741],
+            [116, 894, 690, 1513],
+            [118, 1665, 692, 2283],
+        ],
+    },
+    {
+        title: "Bunny Blue",
+        windows: [
+            [118, 122, 692, 742],
+            [118, 894, 690, 1514],
+            [118, 1665, 692, 2285],
+        ],
+    },
+    {
+        title: "Kawaii",
+    },
+    {
+        title: "Bunny Beige",
+    },
+    {
+        title: "Le Juifvin",
+        windows: [
+            [118, 124, 692, 739],
+            [118, 892, 693, 1507],
+            [110, 1668, 693, 2282],
+        ],
+    },
+    { title: "Blush" },
+    { title: "Sky Blue" },
+    { title: "Berry" },
+    { title: "Sage" },
+    { title: "Pink Bear" },
+];
+
+FRAMES.forEach((frame, idx) => {
+    frame.id = `pb-${String(idx + 1).padStart(2, "0")}`;
+    if (!frame.windows) frame.windows = DEFAULT_WINDOW_SET;
+});
+
+const customFrameWindowMap = Object.fromEntries(FRAMES.map((f) => [f.id, f.windows]));
+
+function buildFrameSidebar() {
+    const sidebar = document.getElementById("frame-sidebar");
+    if (!sidebar) return;
+    sidebar.innerHTML = "";
+    FRAMES.forEach((frame, idx) => {
+        const img = document.createElement("img");
+        img.src = `assets/frames/PB${String(idx + 1).padStart(2, "0")}.png`;
+        img.className = `frame-item${idx === 0 ? " selected" : ""}`;
+        img.dataset.id = frame.id;
+        img.crossorigin = "anonymous";
+        img.title = frame.title;
+        img.alt = `${frame.title} frame preview`;
+        sidebar.appendChild(img);
+    });
+    currentFrameImg = sidebar.querySelector(".frame-item");
+}
+
+buildFrameSidebar();
 
 const standardFrameWindows = [
     [80, 80, 720, 773],
