@@ -11,7 +11,11 @@ const sendEmailBtn = document.getElementById("send-email-btn");
 const sendEmailLabel = document.getElementById("send-email-label");
 const emailInput = document.getElementById("email-input");
 const emailStatus = document.getElementById("email-status");
+const vercelApiOrigin = "https://bits-photobooth.vercel.app";
 const emailApiUrl = (() => {
+    if (window.location.host === "rebienalddev.github.io") {
+        return new URL("/api/send-email", vercelApiOrigin).toString();
+    }
     const apiUrl = new URL("/api/send-email", window.location.origin);
     if (
         window.location.port === "5500" ||
