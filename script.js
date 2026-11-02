@@ -883,6 +883,25 @@ downloadBtn.onclick = () => {
     document.body.removeChild(downloadLink);
 };
 
+function buildEmailImage() {
+    const isProd = !["localhost", "127.0.0.1"].includes(window.location.hostname);
+    if (!isProd) return canvas.toDataURL("image/png");
+
+    const work = document.createElement("canvas");
+    const wc = work.getContext("2d");
+    let width = 600;
+    for (;;) {
+        work.width = width;
+        work.height = Math.round((width / canvas.width) * canvas.height);
+        wc.clearRect(0, 0, work.width, work.height);
+        wc.drawImage(canvas, 0, 0, work.width, work.height);
+        const dataUrl = work.toDataURL("image/jpeg", 0.85);
+        // Vercel serverless functions accept request bodies up to ~4.5MB
+        if (dataUrl.length < 3_500_000 || width <= 300) return dataUrl;
+        width = Math.max(300, Math.round(width * 0.8));
+    }
+}
+
 sendEmailBtn.onclick = async () => {
     if (!emailInput.reportValidity()) return;
 
@@ -892,7 +911,7 @@ sendEmailBtn.onclick = async () => {
     emailStatus.classList.remove("success", "error");
 
     try {
-        const imageBase64 = canvas.toDataURL("image/png");
+        const imageBase64 = await buildEmailImage();
         const response = await fetch(emailApiUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
