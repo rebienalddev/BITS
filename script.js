@@ -65,72 +65,101 @@ const DEFAULT_WINDOW_SET = [118, 122, 692, 742];
 
 const FRAMES = [
     {
-        title: "Emerald",
+        title: "Frame 1",
         windows: [
-            [126, 193, 680, 754],
-            [128, 912, 683, 1473],
-            [117, 1683, 672, 2244],
+            [117, 122, 693, 742],
+            [117, 890, 693, 1510],
+            [117, 1665, 693, 2285],
         ],
     },
     {
-        title: "Midnight Floral",
+        title: "Frame 2",
         windows: [
-            [108, 141, 641, 756],
-            [135, 906, 662, 1494],
-            [135, 1675, 653, 2261],
+            [117, 122, 693, 742],
+            [117, 890, 693, 1510],
+            [117, 1665, 693, 2285],
         ],
     },
     {
-        title: "Mean Girls",
+        title: "Frame 3",
         windows: [
-            [149, 129, 677, 669],
-            [154, 904, 682, 1444],
-            [154, 1675, 682, 2300],
+            [117, 122, 693, 742],
+            [117, 890, 693, 1510],
+            [117, 1665, 693, 2285],
         ],
     },
     {
-        title: "Kitten",
+        title: "Frame 4",
         windows: [
-            [164, 119, 632, 734],
-            [164, 890, 639, 1504],
-            [164, 1645, 636, 2262],
+            [117, 122, 693, 742],
+            [117, 890, 693, 1510],
+            [117, 1665, 693, 2285],
         ],
     },
     {
-        title: "Stitch",
+        title: "Frame 5",
         windows: [
-            [118, 180, 692, 741],
-            [116, 894, 690, 1513],
-            [118, 1665, 692, 2283],
+            [117, 122, 693, 742],
+            [117, 890, 693, 1510],
+            [117, 1665, 693, 2285],
         ],
     },
     {
-        title: "Bunny Blue",
+        title: "Frame 6",
         windows: [
-            [118, 122, 692, 742],
-            [118, 894, 690, 1514],
-            [118, 1665, 692, 2285],
+            [117, 122, 693, 742],
+            [117, 890, 693, 1510],
+            [117, 1665, 693, 2285],
         ],
     },
     {
-        title: "Kawaii",
-    },
-    {
-        title: "Bunny Beige",
-    },
-    {
-        title: "Le Juifvin",
+        title: "Frame 7",
         windows: [
-            [118, 124, 692, 739],
-            [118, 892, 693, 1507],
-            [110, 1668, 693, 2282],
+            [117, 122, 693, 742],
+            [117, 890, 693, 1510],
+            [117, 1665, 693, 2285],
         ],
     },
-    { title: "Blush" },
-    { title: "Sky Blue" },
-    { title: "Berry" },
-    { title: "Sage" },
-    { title: "Pink Bear" },
+    {
+        title: "Frame 8",
+        windows: [
+            [117, 122, 693, 742],
+            [117, 890, 693, 1510],
+            [117, 1665, 693, 2285],
+        ],
+    },
+    {
+        title: "Frame 9",
+        windows: [
+            [117, 122, 693, 742],
+            [117, 890, 693, 1510],
+            [117, 1665, 693, 2285],
+        ],
+    },
+    {
+        title: "Frame 10",
+        windows: [
+            [117, 122, 693, 742],
+            [117, 890, 693, 1510],
+            [117, 1665, 693, 2285],
+        ],
+    },
+    {
+        title: "Frame 11",
+        windows: [
+            [117, 122, 693, 742],
+            [117, 890, 693, 1510],
+            [117, 1665, 693, 2285],
+        ],
+    },
+    {
+        title: "Frame 12",
+        windows: [
+            [117, 122, 693, 742],
+            [117, 890, 693, 1510],
+            [117, 1665, 693, 2285],
+        ],
+    },
 ];
 
 FRAMES.forEach((frame, idx) => {
@@ -140,11 +169,14 @@ FRAMES.forEach((frame, idx) => {
 
 const customFrameWindowMap = Object.fromEntries(FRAMES.map((f) => [f.id, f.windows]));
 
+const EXCLUDED_FRAMES = new Set(["Frame 4", "Frame 8"]);
+
 function buildFrameSidebar() {
     const sidebar = document.getElementById("frame-sidebar");
     if (!sidebar) return;
     sidebar.innerHTML = "";
     FRAMES.forEach((frame, idx) => {
+        if (EXCLUDED_FRAMES.has(frame.title)) return;
         const img = document.createElement("img");
         img.src = `assets/frames/PB${String(idx + 1).padStart(2, "0")}.png`;
         img.className = `frame-item${idx === 0 ? " selected" : ""}`;
@@ -613,6 +645,7 @@ function refreshGalleryBadges() {
 btnRetake.onclick = () => {
     capturedPhotos = [];
     selectedSlotIndices = [0, 1, 2];
+    resetCountdownButton();
     startBtn.disabled = false;
     startBtnLabel.innerText = "Capture Photo 1 of 6";
     if (hudShotCounter) hudShotCounter.innerText = "0 of 6 Captured";
