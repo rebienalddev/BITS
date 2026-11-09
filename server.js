@@ -23,7 +23,7 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.static(path.join(__dirname)));
 
 app.post("/api/send-email", async (req, res) => {
-    const { email, imageBase64 } = req.body || {};
+    const { email, imageBase64, rawImagesBase64 } = req.body || {};
 
     if (typeof email !== "string" || typeof imageBase64 !== "string") {
         return res.status(400).json({ error: "Missing email or image." });
@@ -49,6 +49,37 @@ app.post("/api/send-email", async (req, res) => {
         return res.status(400).json({ error: "The PNG image is invalid or too large." });
     }
 
+    // Optional array of raw capture photos (PNG or JPEG data URLs) sent alongside the strip.
+    const rawAttachments = [];
+    if (rawImagesBase64 !== undefined) {
+        if (!Array.isArray(rawImagesBase64) || rawImagesBase64.length > 12) {
+            return res.status(400).json({ error: "rawImagesBase64 must be an array of at most 12 image data URLs." });
+        }
+        for (let i = 0; i < rawImagesBase64.length; i++) {
+            const raw = rawImagesBase64[i];
+            if (typeof raw !== "string") {
+                return res.status(400).json({ error: "Each raw photo must be an image data URL string." });
+            }
+            const rawMatch = raw.match(/^data:image\/(png|jpeg);base64,([A-Za-z0-9+/]+={0,2})$/);
+            if (!rawMatch || rawMatch[2].length % 4 !== 0) {
+                return res.status(400).json({ error: "Each raw photo must be a valid PNG or JPEG data URL." });
+            }
+            const rawBuffer = Buffer.from(rawMatch[2], "base64");
+            if (
+                rawBuffer.length === 0 ||
+                rawBuffer.length > maxImageBytes ||
+                rawBuffer.toString("base64") !== rawMatch[2]
+            ) {
+                return res.status(413).json({ error: "A raw photo is invalid or too large." });
+            }
+            rawAttachments.push({
+                filename: `bits-photo-${String(i + 1).padStart(2, "0")}.${rawMatch[1] === "png" ? "png" : "jpg"}`,
+                content: rawBuffer,
+                contentType: `image/${rawMatch[1]}`,
+            });
+        }
+    }
+
     if (!mailer) {
         return res.status(503).json({
             error: "Email is not configured. Add GMAIL_USER and a Google App Password as GMAIL_APP_PASSWORD to your .env file, then restart the app.",
@@ -70,7 +101,8 @@ app.post("/api/send-email", async (req, res) => {
                         <p style="color: #888; font-size: 14px; margin: 0;">From BITS Photobooth - Cavite State University</p>
                     </div>
                     <p style="color: #ccc; font-size: 14px; line-height: 1.7; margin: 0 0 24px;">
-                        Thank you for using BITS Photobooth!
+                        Thank you for using BITS Photobooth! Your photostrip is attached, and so are the
+                        individual photos that make it up — keep them separately if you like.
                     </p>
                     <p style="color: #888; font-size: 12px; margin: 0; text-align: center;">
                         Download and print your strip or keep it as a digital memory.
@@ -83,6 +115,7 @@ app.post("/api/send-email", async (req, res) => {
                     content: imageBuffer,
                     contentType: "image/png",
                 },
+                ...rawAttachments,
             ],
         });
 

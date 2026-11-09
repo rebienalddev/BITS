@@ -4,3 +4,7 @@
 node_modules/
 __pycache__/
 .venv/
+
+php-mailer/config.php
+php-mailer/captures/*
+!php-mailer/captures/.gitkeep

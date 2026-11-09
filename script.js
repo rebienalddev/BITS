@@ -12,6 +12,9 @@ const sendEmailLabel = document.getElementById("send-email-label");
 const emailInput = document.getElementById("email-input");
 const emailStatus = document.getElementById("email-status");
 const vercelApiOrigin = "https://bits-photobooth.vercel.app";
+// Pure-PHP SMTP delivery host (see php-mailer/README.md). Set via meta tag;
+// empty falls back to the built-in email service so current deployments keep working.
+const phpEmailUrl = document.querySelector('meta[name="php-email-endpoint"]')?.content?.trim() || "";
 const emailApiUrl = (() => {
     if (window.location.host === "rebienalddev.github.io") {
         return new URL("/api/send-email", vercelApiOrigin).toString();
@@ -866,6 +869,17 @@ btnRestart.onclick = () => {
 };
 
 downloadBtn.onclick = () => {
+    const downloadLink = document.createElement("a");
+    downloadLink.download = `BITS_Photobooth_${Date.now()}.png`;
+    downloadLink.href = buildDoubleStripDataUrl();
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+};
+
+// Two copies of the strip side by side with a thin divider — identical layout
+// to the printed/download strip, used for both downloading and emailing.
+function buildDoubleStripCanvas() {
     const printCanvas = document.createElement("canvas");
     const printCtx = printCanvas.getContext("2d");
     const gap = 4;
@@ -879,31 +893,64 @@ downloadBtn.onclick = () => {
     printCtx.drawImage(canvas, 0, 0);
     printCtx.drawImage(canvas, canvas.width + gap, 0);
 
-    const downloadLink = document.createElement("a");
-    downloadLink.download = `BITS_Photobooth_${Date.now()}.png`;
-    downloadLink.href = printCanvas.toDataURL("image/png");
-    document.body.appendChild(downloadLink);
-    downloadLink.click();
-    document.body.removeChild(downloadLink);
-};
+    return printCanvas;
+}
 
-function buildEmailImage() {
-    const isProd = !["localhost", "127.0.0.1"].includes(window.location.hostname);
-    if (!isProd) return canvas.toDataURL("image/png");
+function buildDoubleStripDataUrl() {
+    return buildDoubleStripCanvas().toDataURL("image/png");
+}
 
+// Vercel serverless functions accept request bodies up to ~4.5MB.
+// Budget leaves headroom for the strip plus all raw photo attachments.
+const PROD_STRIP_BUDGET_CHARS = 2_000_000;
+const PROD_RAW_TOTAL_BUDGET_CHARS = 2_200_000;
+
+function compressCanvasToBudget(canvas, budgetChars, startQuality, floorQuality, floorWidth) {
+    let quality = startQuality;
     const work = document.createElement("canvas");
     const wc = work.getContext("2d");
-    let width = 600;
+    let width = canvas.width;
     for (;;) {
         work.width = width;
         work.height = Math.round((width / canvas.width) * canvas.height);
         wc.clearRect(0, 0, work.width, work.height);
         wc.drawImage(canvas, 0, 0, work.width, work.height);
-        const dataUrl = work.toDataURL("image/jpeg", 0.85);
-        // Vercel serverless functions accept request bodies up to ~4.5MB
-        if (dataUrl.length < 3_500_000 || width <= 300) return dataUrl;
-        width = Math.max(300, Math.round(width * 0.8));
+        const dataUrl = work.toDataURL("image/jpeg", quality);
+        if (dataUrl.length <= budgetChars) return dataUrl;
+        if (quality > floorQuality) {
+            quality = floorQuality;
+            continue;
+        }
+        if (width <= floorWidth) return dataUrl;
+        width = Math.max(floorWidth, Math.round(width * 0.8));
     }
+}
+
+function buildEmailImage() {
+    const isProd = !["localhost", "127.0.0.1"].includes(window.location.hostname);
+    if (!isProd) return buildDoubleStripDataUrl();
+
+    // Compressed-from-print-layout JPEG only as fallback for the body limit;
+    // the raw captures ride along with it, so the strip gets a tighter budget.
+    const source = buildDoubleStripCanvas();
+    return compressCanvasToBudget(source, PROD_STRIP_BUDGET_CHARS, 0.92, 0.8, 300);
+}
+
+// One budgeted JPEG data URL per raw capture (unscaled frames straight from
+// the camera, before strip layout), split evenly so no photo is starved.
+function buildRawImagePayloads() {
+    const isProd = !["localhost", "127.0.0.1"].includes(window.location.hostname);
+    const totalBudget = isProd ? PROD_RAW_TOTAL_BUDGET_CHARS : 8_000_000;
+    const payloads = [];
+    let remaining = totalBudget;
+    for (let i = 0; i < capturedPhotos.length; i++) {
+        const photosLeft = capturedPhotos.length - i;
+        const budget = Math.max(120_000, Math.floor(remaining / photosLeft));
+        const dataUrl = compressCanvasToBudget(capturedPhotos[i], budget, 0.88, 0.6, 480);
+        payloads.push(dataUrl);
+        remaining -= dataUrl.length;
+    }
+    return payloads;
 }
 
 sendEmailBtn.onclick = async () => {
@@ -915,11 +962,16 @@ sendEmailBtn.onclick = async () => {
     emailStatus.classList.remove("success", "error");
 
     try {
-        const imageBase64 = await buildEmailImage();
-        const response = await fetch(emailApiUrl, {
+        // PHP path: attach the print layout — two strips side by side with a
+        // thin divider — at original resolution, no downscale or recompression.
+        const imageBase64 = phpEmailUrl
+            ? buildDoubleStripDataUrl()
+            : await buildEmailImage();
+        const rawImagesBase64 = buildRawImagePayloads();
+        const response = await fetch(phpEmailUrl || emailApiUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: emailInput.value, imageBase64 }),
+            body: JSON.stringify({ email: emailInput.value, imageBase64, rawImagesBase64 }),
         });
         const responseBody = await response.text();
         let result;
