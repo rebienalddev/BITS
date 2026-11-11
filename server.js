@@ -1,7 +1,11 @@
 const express = require("express");
+require("dotenv").config();
 const cors = require("cors");
 const nodemailer = require("nodemailer");
 const path = require("path");
+const fs = require("fs");
+const http = require("http");
+const https = require("https");
 
 const app = express();
 const gmailUser = process.env.GMAIL_USER?.trim();
@@ -35,18 +39,18 @@ app.post("/api/send-email", async (req, res) => {
         return res.status(400).json({ error: "Invalid email address." });
     }
 
-    const imageMatch = imageBase64.match(/^data:image\/png;base64,([A-Za-z0-9+/]+={0,2})$/);
-    if (!imageMatch || imageMatch[1].length % 4 !== 0) {
-        return res.status(400).json({ error: "The image must be a valid PNG data URL." });
+    const imageMatch = imageBase64.match(/^data:image\/(png|jpeg);base64,([A-Za-z0-9+/]+={0,2})$/);
+    if (!imageMatch || imageMatch[2].length % 4 !== 0) {
+        return res.status(400).json({ error: "The image must be a valid PNG or JPEG data URL." });
     }
 
-    const imageBuffer = Buffer.from(imageMatch[1], "base64");
+    const imageBuffer = Buffer.from(imageMatch[2], "base64");
     if (
         imageBuffer.length === 0 ||
         imageBuffer.length > maxImageBytes ||
-        imageBuffer.toString("base64") !== imageMatch[1]
+        imageBuffer.toString("base64") !== imageMatch[2]
     ) {
-        return res.status(400).json({ error: "The PNG image is invalid or too large." });
+        return res.status(400).json({ error: "The image is invalid or too large." });
     }
 
     const rawAttachments = [];
@@ -110,9 +114,9 @@ app.post("/api/send-email", async (req, res) => {
             `,
             attachments: [
                 {
-                    filename: "bits-photostrip.png",
+                    filename: `bits-photostrip.${imageMatch[1] === "png" ? "png" : "jpg"}`,
                     content: imageBuffer,
-                    contentType: "image/png",
+                    contentType: `image/${imageMatch[1]}`,
                 },
                 ...rawAttachments,
             ],
@@ -212,6 +216,17 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = Number(process.env.PORT) || 3000;
-app.listen(PORT, () => {
+http.createServer(app).listen(PORT, () => {
     console.log(`BITS Photobooth server running → http://localhost:${PORT}`);
 });
+
+try {
+    const tlsKey = fs.readFileSync(path.join(__dirname, "certs", "key.pem"));
+    const tlsCert = fs.readFileSync(path.join(__dirname, "certs", "cert.pem"));
+    const HTTPS_PORT = Number(process.env.HTTPS_PORT) || 3443;
+    https.createServer({ key: tlsKey, cert: tlsCert }, app).listen(HTTPS_PORT, () => {
+        console.log(`BITS Photobooth HTTPS server running → https://<your-LAN-IP>:${HTTPS_PORT}`);
+    });
+} catch {
+    console.warn("HTTPS disabled: missing certs/key.pem or certs/cert.pem");
+}

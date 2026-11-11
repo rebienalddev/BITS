@@ -1,0 +1,4 @@
+◇ injected env (3) from .env
+BITS Photobooth server running → http://localhost:3000
+BITS Photobooth HTTPS server running → https://<your-LAN-IP>:3443
+Photostrip email sent — ID: <dec0e1ec-e6d0-19a1-fb68-a5f51a53c232@gmail.com>

@@ -344,7 +344,7 @@ async function initCameraStream() {
         showCameraError(
             secure
                 ? "Webcam API is not supported by your browser or environment."
-                : "Camera access is blocked because you opened the app over an insecure connection. Open it using http://localhost:3000 instead of the LAN IP or Live Server URL, then reload.",
+                : "Camera access is blocked on insecure origins. Open https://192.168.38.178:3443 (click Advanced → Proceed) and allow camera access, then reload.",
         );
         return;
     }
