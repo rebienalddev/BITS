@@ -49,7 +49,6 @@ app.post("/api/send-email", async (req, res) => {
         return res.status(400).json({ error: "The PNG image is invalid or too large." });
     }
 
-    // Optional array of raw capture photos (PNG or JPEG data URLs) sent alongside the strip.
     const rawAttachments = [];
     if (rawImagesBase64 !== undefined) {
         if (!Array.isArray(rawImagesBase64) || rawImagesBase64.length > 12) {
@@ -132,6 +131,65 @@ app.post("/api/send-email", async (req, res) => {
             .status(502)
             .json({ error: "Gmail could not send the photostrip. Check your internet connection and try again." });
     }
+});
+
+let printQueue = [];
+let nextQueueSequence = 1;
+
+app.get("/api/queue", (req, res) => {
+    res.json({ queue: printQueue });
+});
+
+app.post("/api/queue", (req, res) => {
+    const { imageBase64, timestamp, clientTicket } = req.body || {};
+    if (!imageBase64) {
+        return res.status(400).json({ error: "Missing imageBase64." });
+    }
+
+    const item = {
+        id: nextQueueSequence++,
+        ticketNumber: clientTicket || `T-${String(nextQueueSequence - 1).padStart(3, '0')}`,
+        imageBase64,
+        status: "pending",
+        createdAt: timestamp || new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+    };
+
+    printQueue.push(item);
+    res.json({ success: true, item });
+});
+
+app.patch("/api/queue/:id", (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    const { status } = req.body || {};
+    const validStatuses = ["pending", "printed", "discarded"];
+    if (!validStatuses.includes(status)) {
+        return res.status(400).json({ error: "Invalid status value." });
+    }
+
+    const item = printQueue.find((q) => q.id === id);
+    if (!item) {
+        return res.status(404).json({ error: "Item not found in queue." });
+    }
+
+    item.status = status;
+    item.updatedAt = new Date().toISOString();
+    res.json({ success: true, item });
+});
+
+app.delete("/api/queue/:id", (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    const index = printQueue.findIndex((q) => q.id === id);
+    if (index === -1) {
+        return res.status(404).json({ error: "Item not found in queue." });
+    }
+    const removed = printQueue.splice(index, 1);
+    res.json({ success: true, removed: removed[0] });
+});
+
+app.delete("/api/queue", (req, res) => {
+    printQueue = [];
+    res.json({ success: true, message: "Queue cleared." });
 });
 
 app.use("/api", (req, res) => {

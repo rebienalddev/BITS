@@ -12,8 +12,7 @@ const sendEmailLabel = document.getElementById("send-email-label");
 const emailInput = document.getElementById("email-input");
 const emailStatus = document.getElementById("email-status");
 const vercelApiOrigin = "https://bits-photobooth.vercel.app";
-// Pure-PHP SMTP delivery host (see php-mailer/README.md). Set via meta tag;
-// empty falls back to the built-in email service so current deployments keep working.
+
 const phpEmailUrl = document.querySelector('meta[name="php-email-endpoint"]')?.content?.trim() || "";
 const emailApiUrl = (() => {
     if (window.location.host === "rebienalddev.github.io") {
@@ -859,7 +858,10 @@ function renderStrip() {
 }
 
 btnBackToSelect.onclick = () => goToStage(2);
-btnNext3.onclick = () => goToStage(4);
+btnNext3.onclick = () => {
+    autoEnqueuePhotostrip();
+    goToStage(4);
+};
 btnBackToStudio.onclick = () => goToStage(3);
 btnRestart.onclick = () => {
     if (activeStream) {
@@ -877,8 +879,6 @@ downloadBtn.onclick = () => {
     document.body.removeChild(downloadLink);
 };
 
-// Two copies of the strip side by side with a thin divider — identical layout
-// to the printed/download strip, used for both downloading and emailing.
 function buildDoubleStripCanvas() {
     const printCanvas = document.createElement("canvas");
     const printCtx = printCanvas.getContext("2d");
@@ -900,8 +900,6 @@ function buildDoubleStripDataUrl() {
     return buildDoubleStripCanvas().toDataURL("image/png");
 }
 
-// Vercel serverless functions accept request bodies up to ~4.5MB.
-// Budget leaves headroom for the strip plus all raw photo attachments.
 const PROD_STRIP_BUDGET_CHARS = 2_000_000;
 const PROD_RAW_TOTAL_BUDGET_CHARS = 2_200_000;
 
@@ -930,14 +928,10 @@ function buildEmailImage() {
     const isProd = !["localhost", "127.0.0.1"].includes(window.location.hostname);
     if (!isProd) return buildDoubleStripDataUrl();
 
-    // Compressed-from-print-layout JPEG only as fallback for the body limit;
-    // the raw captures ride along with it, so the strip gets a tighter budget.
     const source = buildDoubleStripCanvas();
     return compressCanvasToBudget(source, PROD_STRIP_BUDGET_CHARS, 0.92, 0.8, 300);
 }
 
-// One budgeted JPEG data URL per raw capture (unscaled frames straight from
-// the camera, before strip layout), split evenly so no photo is starved.
 function buildRawImagePayloads() {
     const isProd = !["localhost", "127.0.0.1"].includes(window.location.hostname);
     const totalBudget = isProd ? PROD_RAW_TOTAL_BUDGET_CHARS : 8_000_000;
@@ -962,8 +956,7 @@ sendEmailBtn.onclick = async () => {
     emailStatus.classList.remove("success", "error");
 
     try {
-        // PHP path: attach the print layout — two strips side by side with a
-        // thin divider — at original resolution, no downscale or recompression.
+
         const imageBase64 = phpEmailUrl
             ? buildDoubleStripDataUrl()
             : await buildEmailImage();
@@ -1007,6 +1000,74 @@ sendEmailBtn.onclick = async () => {
         sendEmailLabel.innerText = "Send";
     }
 };
+
+const PHOTO_QUEUE_STORAGE_KEY = "bits_photobooth_captured_queue";
+
+const queueApiBase = (() => {
+    if (window.location.port === "3000") return window.location.origin;
+    return "http://" + (["localhost", "127.0.0.1"].includes(window.location.hostname) ? window.location.hostname : "localhost") + ":3000";
+})();
+
+function readLocalQueue() {
+    try {
+        return JSON.parse(localStorage.getItem(PHOTO_QUEUE_STORAGE_KEY) || "[]") || [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function writeLocalQueue(localQueue) {
+
+    while (localQueue.length > 200) localQueue.shift();
+    localStorage.setItem(PHOTO_QUEUE_STORAGE_KEY, JSON.stringify(localQueue));
+    window.dispatchEvent(new Event("storage"));
+}
+
+async function pushStripToServer(stripImg, timestamp) {
+    const response = await fetch(new URL("/api/queue", queueApiBase).toString(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageBase64: stripImg, timestamp }),
+    });
+    if (!response.ok) throw new Error(`Server responded ${response.status}`);
+    return await response.json();
+}
+
+async function autoEnqueuePhotostrip() {
+    try {
+        const stripImg = buildDoubleStripDataUrl();
+
+        if (readLocalQueue().some((i) => i.imageBase64 === stripImg)) {
+            return;
+        }
+
+        const timestamp = new Date().toISOString();
+
+        let serverItem = null;
+        try {
+            const result = await pushStripToServer(stripImg, timestamp);
+            if (result && result.item) serverItem = result.item;
+        } catch (serverErr) {
+            console.log("Server queue push unavailable, buffering locally:", serverErr);
+        }
+
+        const queueItem = {
+            id: serverItem ? serverItem.id : (readLocalQueue().reduce((m, i) => Math.max(m, i.id || 0), 0) + 1),
+            ticketNumber: serverItem ? serverItem.ticketNumber : undefined,
+            imageBase64: stripImg,
+            status: "pending",
+            createdAt: timestamp,
+            updatedAt: timestamp,
+            synced: Boolean(serverItem),
+        };
+
+        const localQueue = readLocalQueue();
+        localQueue.push(queueItem);
+        writeLocalQueue(localQueue);
+    } catch (err) {
+        console.error("Failed to enqueue photostrip:", err);
+    }
+}
 
 window.addEventListener("DOMContentLoaded", () => {
     initCameraStream();

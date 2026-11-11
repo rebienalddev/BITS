@@ -1,13 +1,4 @@
 <?php
-/**
- * Bits pure PHP SMTP mailer.
- *
- * Implements RFC 5321 on top of native PHP sockets only:
- * connection, EHLO, STARTTLS, AUTH LOGIN, MAIL FROM / RCPT TO / DATA,
- * MIME multipart message assembly with base64 attachment, QUIT.
- *
- * No PHPMailer, no Composer, no third-party libraries.
- */
 
 declare(strict_types=1);
 
@@ -28,11 +19,10 @@ final class SmtpMailer
     private string $password;
     private string $fromEmail;
     private string $fromName;
-    private string $encryption;   // 'tls' (STARTTLS) | 'ssl' (implicit) | 'none'
+    private string $encryption;
     private string $ehloName;
     private int $timeout;
 
-    /** @var resource|null */
     private $socket = null;
 
     public function __construct(array $config)
@@ -55,7 +45,7 @@ final class SmtpMailer
             throw new SmtpMailerException('SMTP_ENCRYPTION must be one of: tls, ssl, none');
         }
         if ($this->encryption === 'ssl') {
-            return; // Implicit TLS already negotiated at connect time.
+            return;
         }
         $this->ehloName = trim((string) ($config['SMTP_EHLO_NAME'] ?? 'localhost'));
         $this->timeout  = (int) ($config['SMTP_TIMEOUT'] ?? self::DEFAULT_TIMEOUT);
@@ -65,18 +55,6 @@ final class SmtpMailer
         }
     }
 
-    /**
-     * Send a MIME multipart email with one or more image attachments.
-     *
-     * @param string $toEmail   validated recipient email address
-     * @param string $subject   UTF-8 subject line
-     * @param string $htmlBody  HTML email body
-     * @param string $textBody  plain-text fallback body
-     * @param array  $attachments list of attachments, each an array with keys:
-     *                            'data' => raw attachment bytes (never resized or recompressed here),
-     *                            'mime' => one of the SmtpMailer::MIME_* constants,
-     *                            'name' => attachment filename as it appears for the recipient
-     */
     public function send(
         string $toEmail,
         string $subject,
@@ -107,12 +85,10 @@ final class SmtpMailer
             $this->greetAndStartTls();
             $this->authenticate();
 
-            // SMTP line discipline for the recipient argument.
             $this->command('MAIL FROM:<' . $this->fromEmail . '>', [250]);
             $this->command('RCPT TO:<' . $toEmail . '>', [250, 251]);
             $this->command('DATA', [354]);
 
-            // Dot-stuffing per RFC 5321 §4.5.2, then terminate with a lone dot.
             $this->writeAll($this->dotStuff($message) . "\r\n.\r\n");
             $response = $this->readResponse('after DATA payload');
             if (($code = $this->firstCode($response)) !== 250) {
@@ -125,10 +101,6 @@ final class SmtpMailer
             $this->disconnect();
         }
     }
-
-    // ------------------------------------------------------------------
-    // Connection lifecycle
-    // ------------------------------------------------------------------
 
     private function connect(): void
     {
@@ -151,7 +123,7 @@ final class SmtpMailer
 
         if ($socket === false) {
             $this->socket = null;
-            // Never leak credentials; connection errors carry no secrets but stay generic.
+
             throw new SmtpMailerException("Unable to connect to SMTP server {$this->host}:{$this->port} (error {$errno}).");
         }
 
@@ -164,16 +136,13 @@ final class SmtpMailer
         }
     }
 
-    /**
-     * EHLO handshake plus optional STARTTLS upgrade.
-     */
     private function greetAndStartTls(): void
     {
         $ehlo = $this->command('EHLO ' . $this->ehloName, [250]);
         $capabilities = strtoupper(implode("\n", $ehlo));
 
         if ($this->encryption === 'ssl') {
-            return; // Implicit TLS already negotiated at connect time.
+            return;
         }
 
         if ($this->encryption === 'tls') {
@@ -187,10 +156,9 @@ final class SmtpMailer
                 throw new SmtpMailerException('TLS negotiation with the SMTP server failed.');
             }
 
-            // RFC 3207: EHLO must be re-issued once the channel is encrypted.
             $this->command('EHLO ' . $this->ehloName, [250]);
         }
-        // encryption === 'none': plaintext, no STARTTLS attempted.
+
     }
 
     private function authenticate(): void
@@ -214,15 +182,6 @@ final class SmtpMailer
         }
     }
 
-    // ------------------------------------------------------------------
-    // Command / response helpers
-    // ------------------------------------------------------------------
-
-    /**
-     * Send a command and validate every response line until completion.
-     *
-     * @return string[] all server response lines (used to read EHLO capabilities)
-     */
     private function command(string $command, array $expectedCodes): array
     {
         $this->writeAll($command . "\r\n");
@@ -234,11 +193,6 @@ final class SmtpMailer
         return $response;
     }
 
-    /**
-     * Read SMTP multi-line responses: final line is `NNN<space>...`.
-     *
-     * @return string[] lines without trailing CRLF, first three chars are the code
-     */
     private function readResponse(string $context): array
     {
         if ($this->socket === null) {
@@ -250,7 +204,6 @@ final class SmtpMailer
             $line    = rtrim($line, "\r\n");
             $lines[] = $line;
 
-            // Final line of a multi-line response ends with "NNN<space>"; "NNN-" continuation follows.
             if (preg_match('/^(\d{3}) (.*)$/', $line, $m) === 1) {
                 return $lines;
             }
@@ -294,14 +247,6 @@ final class SmtpMailer
         $this->socket = null;
     }
 
-    // ------------------------------------------------------------------
-    // MIME assembly
-    // ------------------------------------------------------------------
-
-    /**
-     * Build a complete RFC 2045/2046/5321 DATA payload (headers + body).
-     * CRLF line endings throughout, as SMTP requires.
-     */
     private function buildMessage(
         string $toEmail,
         string $subject,
@@ -325,7 +270,6 @@ final class SmtpMailer
         $message = implode("\r\n", $headers) . "\r\n\r\n";
         $message .= "This is a multi-part message in MIME format.\r\n\r\n";
 
-        // Part 1: alternative text/html body.
         $message .= "--{$mixedBoundary}\r\n";
         $message .= "Content-Type: multipart/alternative; boundary=\"{$altBoundary}\"\r\n\r\n";
 
@@ -341,7 +285,6 @@ final class SmtpMailer
 
         $message .= "--{$altBoundary}--\r\n";
 
-        // Part 2: attachments (photostrip first, then any raw photos), base64 encoded exactly as given.
         foreach ($attachments as $attachment) {
             $name           = $this->sanitizeFilename((string) $attachment['name']);
             $attachmentData = chunk_split(base64_encode((string) $attachment['data']), 76, "\r\n");

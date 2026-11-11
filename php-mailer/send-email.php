@@ -1,35 +1,10 @@
 <?php
-/**
- * BITS Photobooth — pure PHP SMTP email endpoint.
- *
- * POST { "email": "...", "imageBase64": "data:image/png;base64,..." }
- *   or, when the image is stored server-side under captures_dir:
- *       { "email": "...", "image_name": "strips-2087.png" }
- *
- * An optional "rawImagesBase64" array of JPEG data URLs attaches the
- * individual captured photos alongside the photostrip.
- *
- * Responds with JSON: { "success": true, "id": "..." }
- * or { "error": "human readable message" }.
- *
- * Security notes:
- *  - Origin/Referer allowlist (config 'allowed_origins') acts as CSRF defense
- *    and rejects the request outright for unknown sites.
- *  - Inline images are validated against a strict data-URL grammar, decoded
- *    with base64 strict mode, canonicalized and size limited; nothing is
- *    resized, recompressed or otherwise modified before attaching.
- *  - The optional server-side 'image_name' mode never trusts raw paths: only
- *    `[A-Za-z0-9._-]` filenames inside captures_dir are allowed.
- *  - SMTP credentials stay in config.php (git-ignored) and are never echoed,
- *    never sent to the browser, never included in JS.
- */
 
 declare(strict_types=1);
 
 require __DIR__ . '/config.php';
 require __DIR__ . '/SmtpMailer.php';
 
-/** @var array $config */
 $config = require __DIR__ . '/config.php';
 
 function respond(int $status, array $payload): never
@@ -54,7 +29,7 @@ if ($requestOrigin !== '') {
         }
     }
 } else {
-    // Same-origin tools (curl, PHP built-in server) may omit Origin: allow own host.
+
     $allowed = $ownOrigin;
 }
 
@@ -64,7 +39,7 @@ if ($allowed !== null) {
     header('Access-Control-Allow-Origin: ' . $allowed);
     header('Vary: Origin');
 } elseif ($requestOrigin !== '') {
-    header('Access-Control-Allow-Origin: ' . $ownOrigin); // header for the browser, decision still 403
+    header('Access-Control-Allow-Origin: ' . $ownOrigin);
 }
 header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
@@ -74,7 +49,6 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
     exit;
 }
 
-// CSRF token issuance (used only when config 'csrf_required' is true).
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'GET') {
     if ($config['csrf_required'] ?? false) {
         if (session_status() !== PHP_SESSION_ACTIVE) {
@@ -101,7 +75,6 @@ if (!is_array($body)) {
     respond(400, ['error' => 'Request body must be a JSON object.']);
 }
 
-// Optional CSRF token check.
 if ($config['csrf_required'] ?? false) {
     if (session_status() !== PHP_SESSION_ACTIVE) {
         session_start();
@@ -113,8 +86,6 @@ if ($config['csrf_required'] ?? false) {
     }
 }
 
-// ---- Recipient validation -------------------------------------------------
-
 $recipient = trim((string) ($body['email'] ?? ''));
 if ($recipient === '') {
     respond(400, ['error' => 'Missing email address.']);
@@ -122,8 +93,6 @@ if ($recipient === '') {
 if (filter_var($recipient, FILTER_VALIDATE_EMAIL) === false || strlen($recipient) > 254) {
     respond(400, ['error' => 'Invalid email address.']);
 }
-
-// ---- Image source validation ---------------------------------------------
 
 $maxBytes      = (int) ($config['max_attachment_bytes'] ?? 8 * 1024 * 1024);
 $capturesDir   = (string) ($config['captures_dir'] ?? __DIR__ . '/captures');
@@ -137,10 +106,9 @@ if ($imageBase64 !== '' && $imageName !== '') {
     respond(400, ['error' => 'Provide either imageBase64 or image_name, not both.']);
 }
 
-/** Validate one inline image data URL and return ['data' => bytes, 'mime' => MIME]. */
 function parseInlineImageDataUrl(string $dataUrl, string $errorMessage): array
 {
-    // Strict data-URL grammar: image/jpeg|jpg|png only, valid base64 chars, optional padding.
+
     if (preg_match('/^data:image\/(jpeg|jpg|png);base64,([A-Za-z0-9+\/]*)={0,2}$/', $dataUrl, $m) !== 1) {
         respond(400, ['error' => $errorMessage]);
     }
@@ -148,7 +116,7 @@ function parseInlineImageDataUrl(string $dataUrl, string $errorMessage): array
     if ($decoded === false) {
         respond(400, ['error' => 'The image data is not valid base64.']);
     }
-    // Canonical check: reject images whose re-encoded form differs (payload tampering).
+
     if (base64_encode($decoded) !== $m[2] . str_repeat('=', (4 - strlen($m[2]) % 4) % 4)) {
         respond(400, ['error' => 'The image data is malformed.']);
     }
@@ -160,7 +128,7 @@ if ($imageBase64 !== '') {
     $attachment = parseInlineImageDataUrl($imageBase64, 'The image must be a PNG or JPEG data URL.');
     $attachments[] = $attachment + ['name' => 'bits-photostrip-' . date('Ymd-His') . '-' . bin2hex(random_bytes(2))];
 } elseif ($imageName !== '') {
-    // Server-side stored strip: never trust the browser-provided path.
+
     $name = basename($imageName);
     if ($name !== $imageName) {
         respond(400, ['error' => 'Only bare filenames inside the captures directory are allowed.']);
@@ -182,7 +150,7 @@ if ($imageBase64 !== '') {
     if (filesize($realPath) > $maxBytes) {
         respond(413, ['error' => 'The photostrip is too large to email.']);
     }
-    $guessed = getimagesize($realPath); // confirm real image, not a disguised file
+    $guessed = getimagesize($realPath);
     if ($guessed === false || !in_array($guessed['mime'], [SmtpMailer::MIME_JPEG, SmtpMailer::MIME_PNG], true)) {
         respond(415, ['error' => 'Unsupported image type. Only PNG and JPEG photostrips can be emailed.']);
     }
@@ -195,7 +163,6 @@ if ($imageBase64 !== '') {
     respond(400, ['error' => 'Missing image.']);
 }
 
-// Optional raw capture photos sent alongside the strip.
 if ($rawImagesBase64 !== []) {
     if (!is_array($rawImagesBase64) || count($rawImagesBase64) > 12) {
         respond(400, ['error' => 'rawImagesBase64 must be an array of at most 12 image data URLs.']);
@@ -224,8 +191,6 @@ foreach ($attachments as $attachment) {
 
 $filename   = 'bits-photostrip-' . date('Ymd-His') . '.' .
     ($attachments[0]['mime'] === SmtpMailer::MIME_PNG ? 'png' : 'jpg');
-
-// ---- HTML email (Phase 5) -------------------------------------------------
 
 $escapedEmail = htmlspecialchars($recipient, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 
@@ -263,8 +228,6 @@ $textBody = "Your Photostrip is Here!\n" .
     "The individual photos that make up your strip are attached too.\n\n" .
     "Sent to {$recipient} - {$year}\n";
 
-// ---- Deliver ---------------------------------------------------------------
-
 try {
     $mailer = new SmtpMailer($config);
 
@@ -276,8 +239,7 @@ try {
         $attachments,
     );
 } catch (SmtpMailerException $e) {
-    // Full details (including which stage failed) go only to server logs —
-    // never SMTP credentials, never to the browser.
+
     error_log('BITS SMTP failure: ' . $e->getMessage());
     respond(502, ['error' => 'The email service is temporarily unavailable. Please try again in a moment.']);
 } catch (Throwable $e) {

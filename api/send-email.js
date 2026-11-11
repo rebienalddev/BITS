@@ -52,7 +52,6 @@ module.exports = async (req, res) => {
         return res.status(413).json({ error: "The image is invalid or too large." });
     }
 
-    // Optional array of raw capture photos (PNG or JPEG data URLs), sent alongside the strip.
     const rawAttachments = [];
     if (rawImagesBase64 !== undefined) {
         if (!Array.isArray(rawImagesBase64) || rawImagesBase64.length > 12) {
