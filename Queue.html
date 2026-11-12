@@ -98,35 +98,43 @@
             </div>
         </div>
 
-        <script src="queue.js"></script>
+        <script src="github-sync.js"></script>
+<script src="queue.js"></script>
         <script>
-        // Gallery of captures saved by the server in the QueueImages folder
+        // Gallery of captures synced to the GitHub repo's QueueImages folder (falls back to the laptop server)
         (async function () {
             const grid = document.getElementById("queue-images-grid");
             if (!grid) return;
             async function loadSavedImages() {
+                let files = [];
                 try {
-                    const res = await fetch("/api/queue-images");
-                    const data = await res.json();
-                    const files = data.images || [];
-                    grid.innerHTML = "";
-                    for (const f of files) {
-                        const img = document.createElement("img");
-                        img.src = f;
-                        img.alt = f;
-                        img.style.cssText = "width:100%;border-radius:8px;border:1px solid var(--color-border-subtle);display:block;";
-                        grid.appendChild(img);
-                    }
-                    if (!files.length) {
-                        const p = document.createElement("p");
-                        p.textContent = "No saved captures yet.";
-                        p.style.cssText = "color:var(--color-text-tertiary);font-size:13px;";
-                        grid.appendChild(p);
-                    }
-                } catch (e) { /* server unavailable */ }
+                    const ghFiles = await ghListQueueImages();
+                    files = ghFiles.map((f) => ({ src: f.url, alt: f.name }));
+                } catch (e) {
+                    try {
+                        const res = await fetch("/api/queue-images");
+                        const data = await res.json();
+                        files = (data.images || []).map((f) => ({ src: f, alt: f }));
+                    } catch (e2) { /* no internet, no laptop server */ }
+                }
+                grid.innerHTML = "";
+                for (const f of files) {
+                    const img = document.createElement("img");
+                    img.src = f.src;
+                    img.alt = f.alt;
+                    img.loading = "lazy";
+                    img.style.cssText = "width:100%;border-radius:8px;border:1px solid var(--color-border-subtle);display:block;";
+                    grid.appendChild(img);
+                }
+                if (!files.length) {
+                    const p = document.createElement("p");
+                    p.textContent = "No saved captures yet.";
+                    p.style.cssText = "color:var(--color-text-tertiary);font-size:13px;";
+                    grid.appendChild(p);
+                }
             }
             loadSavedImages();
-            setInterval(loadSavedImages, 5000);
+            setInterval(loadSavedImages, 15000);
         })();
     </script>
 </body>

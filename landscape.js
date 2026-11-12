@@ -930,6 +930,15 @@ async function autoEnqueuePhotostrip() {
             console.log("Server queue push unavailable, buffering locally:", serverErr);
         }
 
+
+        try {
+            if (typeof ghAskForToken === "function" && !ghToken()) ghAskForToken();
+            const ghResult = await ghUploadQueueImage(stripImg);
+            if (ghResult && ghResult.ok) console.log("Capture synced to GitHub:", ghResult.fileName);
+        } catch (ghErr) {
+            console.log("GitHub sync unavailable:", ghErr.message);
+        }
+
         const queueItem = {
             id: serverItem ? serverItem.id : (readLocalQueue().reduce((m, i) => Math.max(m, i.id || 0), 0) + 1),
             ticketNumber: serverItem ? serverItem.ticketNumber : undefined,
