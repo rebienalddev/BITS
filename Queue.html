@@ -80,6 +80,8 @@
                 </section>
 
                 <section class="queue-layout" id="queue-grid"></section>
+
+                <section class="queue-layout" id="queue-images-grid" style="margin-top: 24px;"></section>
             </main>
         </div>
 
@@ -97,5 +99,35 @@
         </div>
 
         <script src="queue.js"></script>
-    </body>
+        <script>
+        // Gallery of captures saved by the server in the QueueImages folder
+        (async function () {
+            const grid = document.getElementById("queue-images-grid");
+            if (!grid) return;
+            async function loadSavedImages() {
+                try {
+                    const res = await fetch("/api/queue-images");
+                    const data = await res.json();
+                    const files = data.images || [];
+                    grid.innerHTML = "";
+                    for (const f of files) {
+                        const img = document.createElement("img");
+                        img.src = f;
+                        img.alt = f;
+                        img.style.cssText = "width:100%;border-radius:8px;border:1px solid var(--color-border-subtle);display:block;";
+                        grid.appendChild(img);
+                    }
+                    if (!files.length) {
+                        const p = document.createElement("p");
+                        p.textContent = "No saved captures yet.";
+                        p.style.cssText = "color:var(--color-text-tertiary);font-size:13px;";
+                        grid.appendChild(p);
+                    }
+                } catch (e) { /* server unavailable */ }
+            }
+            loadSavedImages();
+            setInterval(loadSavedImages, 5000);
+        })();
+    </script>
+</body>
 </html>

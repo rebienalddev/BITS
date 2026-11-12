@@ -135,7 +135,7 @@ app.post("/api/send-email", async (req, res) => {
 let printQueue = [];
 let nextQueueSequence = 1;
 
-const AUTO_SAVE_DIR = path.join(__dirname, "BITS");
+const AUTO_SAVE_DIR = path.join(__dirname, "QueueImages");
 try {
     fs.mkdirSync(AUTO_SAVE_DIR, { recursive: true });
     console.log(`Auto-saving photostrips to: ${AUTO_SAVE_DIR}`);
@@ -176,6 +176,18 @@ function autoSaveQueueImage(imageBase64, label) {
         console.warn("Auto-save error:", err.message);
     }
 }
+
+app.get("/api/queue-images", (req, res) => {
+    try {
+        const files = fs.readdirSync(AUTO_SAVE_DIR)
+            .filter((f) => /\.(png|jpe?g|webp)$/i.test(f))
+            .sort((a, b) => (parseInt(a.match(/^(\d+)\./)?.[1] || 0, 10) - parseInt(b.match(/^(\d+)\./)?.[1] || 0, 10)))
+            .map((f) => "QueueImages/" + f);
+        res.json({ images: files });
+    } catch (err) {
+        res.json({ images: [] });
+    }
+});
 
 app.get("/api/queue", (req, res) => {
     res.json({ queue: printQueue });
