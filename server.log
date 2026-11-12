@@ -7,3 +7,8 @@ Auto-saving photostrips to: /home/rebienald/Desktop/TECHNOBITS
 BITS Photobooth server running → http://localhost:3000
 BITS Photobooth HTTPS server running → https://<your-LAN-IP>:3443
 Saved photostrip: 1.png
+◇ injected env (3) from .env
+Auto-saving photostrips to: /home/rebienald/Desktop/BITS/BITS
+BITS Photobooth server running → http://localhost:3000
+BITS Photobooth HTTPS server running → https://<your-LAN-IP>:3443
+Saved photostrip: 1.png

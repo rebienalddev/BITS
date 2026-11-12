@@ -135,7 +135,7 @@ app.post("/api/send-email", async (req, res) => {
 let printQueue = [];
 let nextQueueSequence = 1;
 
-const AUTO_SAVE_DIR = path.join(os.homedir(), "Desktop", "TECHNOBITS");
+const AUTO_SAVE_DIR = path.join(__dirname, "BITS");
 try {
     fs.mkdirSync(AUTO_SAVE_DIR, { recursive: true });
     console.log(`Auto-saving photostrips to: ${AUTO_SAVE_DIR}`);

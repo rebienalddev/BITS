@@ -207,17 +207,22 @@ async function startCameraById(deviceId) {
     updateCameraStatus("Connecting Camera...", "warning");
     if (cameraErrorBanner) cameraErrorBanner.style.display = "none";
     try {
-        const constraints = {
-            video: deviceId
-                ? {
-                      deviceId: { exact: deviceId },
-                      width: { ideal: 1920, min: 1280 },
-                      height: { ideal: 1080, min: 720 },
-                  }
-                : { width: { ideal: 1920, min: 1280 }, height: { ideal: 1080, min: 720 }, facingMode: "user" },
-            audio: false,
-        };
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        const baseVideo = deviceId
+            ? { deviceId: { exact: deviceId }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+            : { width: { ideal: 1920 }, height: { ideal: 1080 }, facingMode: "user" };
+        let stream;
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ video: baseVideo, audio: false });
+        } catch (constrainedErr) {
+            if (constrainedErr.name === "OverconstrainedError" || constrainedErr.name === "ConstraintNotSatisfiedError") {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: deviceId ? { deviceId: { exact: deviceId } } : { facingMode: "user" },
+                    audio: false,
+                });
+            } else {
+                throw constrainedErr;
+            }
+        }
         activeStream = stream;
         video.srcObject = stream;
         video.onloadedmetadata = () => {
@@ -229,14 +234,28 @@ async function startCameraById(deviceId) {
         await enumerateCameras();
     } catch (err) {
         console.error("Camera access failed:", err);
-        let message = "Please grant camera permissions in your browser to proceed.";
+        let message = "Connecting camera...";
         if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
             message = "No camera device was detected on your computer.";
         } else if (err.name === "NotReadableError" || err.name === "TrackStartError") {
             message = "Your camera is currently in use by another application.";
+        } else if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+            message = "Waiting for camera permission. Allow it in your browser - it will connect automatically.";
+        } else if (err.name === "OverconstrainedError" || err.name === "ConstraintNotSatisfiedError") {
+            message = "The selected camera doesn't support the requested settings. Try another camera.";
         }
         showCameraError(message);
+        scheduleCameraReconnect(err);
     }
+}
+
+
+function secureCameraUrl() {
+    const host = window.location.hostname || "localhost";
+    if (/^\d+(\.\d+){3}$/.test(host) || host.includes(":")) {
+        return "https://" + host + ":3443";
+    }
+    return "https://" + host;
 }
 
 async function initCameraStream() {
@@ -255,12 +274,37 @@ async function initCameraStream() {
         showCameraError(
             secure
                 ? "Webcam API is not supported by your browser or environment."
-                : "Camera access is blocked on insecure origins. Open https://192.168.38.178:3443 (click Advanced → Proceed) and allow camera access, then reload.",
+                : "Camera access needs a secure connection. Open " + secureCameraUrl() + " (tap Advanced → Proceed if warned), allow camera access once, and it will connect automatically.",
         );
         return;
     }
 
     await startCameraById(null);
+}
+
+let cameraReconnectTimer = null;
+
+function scheduleCameraReconnect(err) {
+    const denied = err && (err.name === "NotAllowedError" || err.name === "PermissionDeniedError");
+    const unavailable = err && (err.name === "NotFoundError" || err.name === "DevicesNotFoundError");
+    if (denied || unavailable) {
+        if (!cameraReconnectTimer) {
+            cameraReconnectTimer = setTimeout(() => {
+                cameraReconnectTimer = null;
+                initCameraStream();
+            }, 3000);
+        }
+        try {
+            navigator.permissions?.query({ name: "camera" }).then((p) => {
+                p.onchange = () => {
+                    if (p.state === "granted") {
+                        if (cameraReconnectTimer) { clearTimeout(cameraReconnectTimer); cameraReconnectTimer = null; }
+                        initCameraStream();
+                    }
+                };
+            }).catch(() => {});
+        } catch (e) { /* permissions API unsupported */ }
+    }
 }
 
 if (btnRetryCamera) {
@@ -831,12 +875,17 @@ function compressCanvasToBudget(canvas, budgetChars, startQuality, floorQuality,
 
 
 
+function smartQueueOrigin() {
+    if (window.location.port === "3000" || window.location.port === "3443" || window.location.protocol === "https:") {
+        return window.location.origin;
+    }
+    const host = window.location.hostname || "localhost";
+    return "http://" + host + ":3000";
+}
+
 const PHOTO_QUEUE_STORAGE_KEY = "bits_photobooth_captured_queue";
 
-const queueApiBase = (() => {
-    if (window.location.port === "3000") return window.location.origin;
-    return "http://" + (["localhost", "127.0.0.1"].includes(window.location.hostname) ? window.location.hostname : "localhost") + ":3000";
-})();
+const queueApiBase = smartQueueOrigin();
 
 function readLocalQueue() {
     try {

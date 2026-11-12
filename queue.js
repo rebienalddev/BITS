@@ -3,10 +3,10 @@
     let currentFilter = 'pending';
 
     function queueApiUrl(path) {
-        const origin = (window.location.port === '3000')
-            ? window.location.origin
-            : 'http://' + window.location.hostname + ':3000';
-        return origin + path;
+        if (window.location.port === '3000' || window.location.port === '3443' || window.location.protocol === 'https:') {
+            return window.location.origin + path;
+        }
+        return 'http://' + window.location.hostname + ':3000' + path;
     }
 
     async function findServerQueue() {
