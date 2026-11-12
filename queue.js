@@ -126,6 +126,33 @@
         if (syncInFlight) return;
         syncInFlight = true;
         try {
+            // GitHub repo is the universal sync hub: QueueImages/ files become real queue items
+            if (typeof ghListQueueImages === 'function') {
+                try {
+                    const ghFiles = await ghListQueueImages();
+                    const statusMap = readGhStatuses();
+                    queueItems = ghFiles.map((f) => {
+                        const n = parseInt(f.name.match(/^(\d+)\./)?.[1] || '0', 10);
+                        const st = statusMap[f.name] || {};
+                        return {
+                            id: n,
+                            ghName: f.name,
+                            ticketNumber: 'G-' + String(n).padStart(3, '0'),
+                            imageBase64: f.url,
+                            status: st.status || 'pending',
+                            createdAt: st.createdAt || null,
+                            updatedAt: st.updatedAt || null,
+                        };
+                    });
+                    dedupeVisible();
+                    if (getQueueKey() !== lastRenderedQueueKey) renderUI();
+                    classifyOrientations();
+                    return;
+                } catch (ghErr) {
+                    // GitHub unreachable (offline) — fall through to the laptop-server / local logic
+                }
+            }
+
             const serverQueue = await findServerQueue();
             if (serverQueue) {
                 await syncServerList(serverQueue);
@@ -142,6 +169,24 @@
         } finally {
             syncInFlight = false;
         }
+    }
+
+    const GH_STATUS_KEY = 'bits_gh_statuses';
+
+    function readGhStatuses() {
+        try {
+            return JSON.parse(localStorage.getItem(GH_STATUS_KEY) || '{}');
+        } catch (e) {
+            return {};
+        }
+    }
+
+    function writeGhStatus(ghName, newStatus) {
+        try {
+            const map = readGhStatuses();
+            map[ghName] = { status: newStatus, createdAt: map[ghName]?.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString() };
+            localStorage.setItem(GH_STATUS_KEY, JSON.stringify(map));
+        } catch (e) {}
     }
 
     function updateLocalItemStatus(id, newStatus) {
@@ -162,8 +207,14 @@
             item.status = newStatus;
             item.updatedAt = new Date().toISOString();
         }
-        updateLocalItemStatus(id, newStatus);
+        if (item && item.ghName) {
+            writeGhStatus(item.ghName, newStatus);
+        } else {
+            updateLocalItemStatus(id, newStatus);
+        }
         renderUI();
+
+        if (item && item.ghName) return; // GitHub-backed items keep status in this browser
 
         try {
             await fetch(`${queueApiUrl('/api/queue')}/${id}`, {
@@ -223,7 +274,7 @@
                 ${selectable ? `<div class="select-check">&#10003;</div>` : ''}
                 <div class="card-head">
                     <div style="display: flex; align-items: center;">
-                        <span class="ticket-id">#${String(item.id).padStart(3, '0')}</span>
+                        <span class="ticket-id">${item.ticketNumber ? '#' + item.ticketNumber : '#' + String(item.id).padStart(3, '0')}</span>
                         <span class="queue-pos-badge">#${index + 1}</span>
                     </div>
                     <span class="status-pill pill-${status}">${status}</span>
