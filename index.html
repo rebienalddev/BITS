@@ -186,14 +186,24 @@
                     <div class="strip-easel">
                         <div class="strip-easel-inner" id="canvas-wrapper-3">
                             <canvas id="final-canvas"></canvas>
+                            <canvas id="final-canvas-2"></canvas>
                             <div class="slot-overlay-map" id="slot-overlay-layer" aria-label="Click a photo area to choose a slot">
-                                <button type="button" class="slot-hotspot active" data-slot="0" aria-label="Select slot 1">
+                                <button type="button" class="slot-hotspot active" data-strip="0" data-slot="0" aria-label="Strip 1 slot 1">
                                     <span class="hotspot-badge">Slot 1</span>
                                 </button>
-                                <button type="button" class="slot-hotspot" data-slot="1" aria-label="Select slot 2">
+                                <button type="button" class="slot-hotspot" data-strip="0" data-slot="1" aria-label="Strip 1 slot 2">
                                     <span class="hotspot-badge">Slot 2</span>
                                 </button>
-                                <button type="button" class="slot-hotspot" data-slot="2" aria-label="Select slot 3">
+                                <button type="button" class="slot-hotspot" data-strip="0" data-slot="2" aria-label="Strip 1 slot 3">
+                                    <span class="hotspot-badge">Slot 3</span>
+                                </button>
+                                <button type="button" class="slot-hotspot" data-strip="1" data-slot="0" aria-label="Strip 2 slot 1">
+                                    <span class="hotspot-badge">Slot 1</span>
+                                </button>
+                                <button type="button" class="slot-hotspot" data-strip="1" data-slot="1" aria-label="Strip 2 slot 2">
+                                    <span class="hotspot-badge">Slot 2</span>
+                                </button>
+                                <button type="button" class="slot-hotspot" data-strip="1" data-slot="2" aria-label="Strip 2 slot 3">
                                     <span class="hotspot-badge">Slot 3</span>
                                 </button>
                             </div>
@@ -226,6 +236,11 @@
                             </div>
                         </div>
 
+                        <div class="strip-target-toggle" id="strip-target-toggle">
+                            <button type="button" class="strip-target-btn active" data-strip="0">Strip 1</button>
+                            <button type="button" class="strip-target-btn" data-strip="1">Strip 2</button>
+                        </div>
+
                         <div class="frame-scroll-rack" id="frame-sidebar"></div>
                     </div>
 
@@ -237,6 +252,7 @@
                             </div>
                         </div>
                         <div class="filter-tab-grid" id="filter-container">
+                            <p class="panel-desc" id="filter-editing-label" style="grid-column: 1 / -1; margin: 0 0 4px;">Editing: Photo 1</p>
                             <button type="button" class="filter-chip active" data-filter="none">Natural</button>
                             <button type="button" class="filter-chip" data-filter="grayscale(1) contrast(1.25)">Monochrome</button>
                             <button type="button" class="filter-chip" data-filter="sepia(0.55) brightness(1.08)">Vintage</button>

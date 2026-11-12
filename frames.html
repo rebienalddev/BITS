@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BITS Photobooth - Frames</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .frames-main {
+            flex: 1;
+            overflow-y: auto;
+            padding: 32px clamp(16px, 4vw, 56px) 64px;
+            min-height: 0;
+        }
+        .frames-title {
+            font-family: "Space Grotesk", sans-serif;
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--color-text-primary);
+            margin-bottom: 6px;
+        }
+        .frames-subtitle {
+            font-size: 14px;
+            color: var(--color-text-secondary);
+            margin-bottom: 40px;
+        }
+        .frames-section-title {
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--color-text-primary);
+            margin: 36px 0 18px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--color-border-subtle);
+        }
+        .frames-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        .frames-grid.portrait-grid {
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        }
+        .frame-card {
+            background: var(--color-bg-card);
+            border: 1px solid var(--color-border-subtle);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+        .frame-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--color-border-medium);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+        }
+        .frame-card.excluded { border-color: #f3c2c2; }
+        .frame-thumb {
+            width: 100%;
+            aspect-ratio: 3 / 4;
+            background: var(--color-bg-surface-elevated);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .frames-grid.portrait-grid .frame-thumb { aspect-ratio: 1 / 3; }
+        .frame-thumb img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+        .frame-caption {
+            padding: 12px;
+            text-align: center;
+        }
+        .frame-status {
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 3px 10px;
+            border-radius: var(--radius-full);
+            margin-bottom: 6px;
+        }
+        .frame-status.on {
+            background: var(--color-accent-subtle);
+            color: var(--color-accent);
+            border: 1px solid var(--color-accent-deep);
+        }
+        .frame-status.off {
+            background: #fdf0f0;
+            color: #b42318;
+            border: 1px solid #f3c2c2;
+        }
+        .frame-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--color-text-primary);
+        }
+        .frame-card.excluded .frame-name { color: var(--color-text-tertiary); }
+        .frame-card { cursor: zoom-in; }
+        .preview-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: rgba(23, 23, 23, 0.92);
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            padding: 32px;
+            cursor: zoom-out;
+        }
+        .preview-overlay.open { display: flex; }
+        .preview-overlay img {
+            max-width: 92vw;
+            max-height: 84vh;
+            object-fit: contain;
+            border-radius: var(--radius-md);
+            background: var(--color-bg-surface-elevated);
+        }
+        .preview-caption {
+            margin-top: 16px;
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .preview-hint {
+            margin-top: 6px;
+            color: #a3a3a3;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-shell">
+
+    <header class="app-header">
+        <div class="brand-group">
+            <div class="brand-logo-frame">
+                <img src="assets/BITSLOGO.jpg" alt="BITS Logo" class="brand-logo">
+            </div>
+            <div class="brand-text">
+                <span class="brand-name">BITS Photobooth</span>
+                <span class="brand-subtext">Cavite State University</span>
+            </div>
+        </div>
+        <a href="/" style="font-size:13px;font-weight:700;color:var(--color-accent);text-decoration:none;">
+            &larr; Back to Photobooth
+        </a>
+    </header>
+
+    <main class="frames-main">
+        <h1 class="frames-title">Frames</h1>
+        <p class="frames-subtitle">All active frame assets.</p>
+
+        <h2 class="frames-section-title">Portrait Frames</h2>
+        <div class="frames-grid portrait-grid" id="portrait-grid"></div>
+
+        <h2 class="frames-section-title">Landscape Frames</h2>
+        <div class="frames-grid" id="landscape-grid"></div>
+    </main>
+
+</div>
+
+<div class="preview-overlay" id="preview-overlay">
+    <img id="preview-img" src="" alt="">
+    <div class="preview-caption" id="preview-caption"></div>
+    <div class="preview-hint">Click anywhere or press Esc to close</div>
+</div>
+
+<script>
+    const EXCLUDED_PORTRAIT = ["Frame 1", "Frame 4", "Frame 8"];
+
+    const portrait = [];
+    for (let i = 1; i <= 15; i++) {
+        const title = `Frame ${i}`;
+        portrait.push({
+            title,
+            src: `assets/frames/PB${String(i).padStart(2, "0")}.png`,
+            excluded: EXCLUDED_PORTRAIT.includes(title),
+        });
+    }
+
+    const landscape = [
+        { title: "Landscape Frame 1", src: "LandscapeFrame1.png", excluded: false },
+        { title: "Landscape Frame 2", src: "LandscapeFrame2.png", excluded: false },
+        { title: "Landscape Frame 3", src: "LandscapeFrame3.png", excluded: false },
+        { title: "Landscape Frame 4", src: "LandscapeFrame4.png", excluded: false },
+        { title: "Landscape Frame 5", src: "LandscapeFrame5.png", excluded: false },
+    ];
+
+    function render(gridId, items) {
+        const grid = document.getElementById(gridId);
+        for (const f of items) {
+            if (f.excluded) continue;
+            const fig = document.createElement("figure");
+            fig.className = "frame-card";
+            fig.addEventListener("click", () => openPreview(f.src, f.title));
+            fig.innerHTML =
+                `<div class="frame-thumb"><img src="${f.src}" alt="${f.title}" loading="lazy"></div>` +
+                `<figcaption class="frame-caption">` +
+                `<div class="frame-name">${f.title}</div>` +
+                `</figcaption>`;
+            grid.appendChild(fig);
+        }
+    }
+
+    render("portrait-grid", portrait);
+    render("landscape-grid", landscape);
+
+    const overlay = document.getElementById("preview-overlay");
+    const previewImg = document.getElementById("preview-img");
+    const previewCaption = document.getElementById("preview-caption");
+
+    async function openPreview(src, title) {
+        previewImg.src = src;
+        previewCaption.textContent = title;
+        overlay.classList.add("open");
+        try {
+            if (document.fullscreenElement) await document.exitFullscreen();
+            await overlay.requestFullscreen();
+        } catch (e) { /* overlay still works without fullscreen */ }
+    }
+
+    function closePreview() {
+        overlay.classList.remove("open");
+        if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    }
+
+    overlay.addEventListener("click", closePreview);
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && overlay.classList.contains("open")) closePreview();
+    });
+</script>
+</body>
+</html>

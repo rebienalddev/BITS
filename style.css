@@ -819,6 +819,19 @@ body {
     object-fit: contain;
 }
 
+#final-canvas-2 {
+    max-height: 100%;
+    max-width: 100%;
+    width: auto;
+    height: auto;
+    display: block;
+    object-fit: contain;
+}
+
+.strip-easel-inner #final-canvas + #final-canvas-2 {
+    margin-left: 4px;
+}
+
 .studio-tool-column {
     flex: 1;
     overflow-y: auto;
@@ -898,6 +911,35 @@ body {
 
 .tray-photo.active-in-slot {
     border: 2.5px solid var(--color-accent);
+}
+
+.tray-photo.editing {
+    border: 2.5px solid var(--color-accent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 40%, transparent);
+}
+
+.tray-edit-btn {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    line-height: 1;
+    background-color: rgba(0, 0, 0, 0.65);
+    color: #ffffff;
+    border-radius: var(--radius-xs, 4px);
+    cursor: pointer;
+    z-index: 2;
+    transition: var(--transition-fast);
+}
+
+.tray-edit-btn:hover {
+    background-color: var(--color-accent);
+    color: var(--color-text-dark, #000);
 }
 
 .tray-photo.is-assigned {
@@ -985,18 +1027,50 @@ body {
     font-weight: 700;
 }
 
+.strip-target-toggle {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.strip-target-btn {
+    flex: 1;
+    background-color: var(--color-bg-surface-elevated);
+    border: 1px solid var(--color-border-medium);
+    color: var(--color-text-secondary);
+    padding: 7px 16px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: var(--radius-full);
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.strip-target-btn:hover {
+    color: var(--color-text-primary);
+    border-color: var(--color-border-highlight);
+}
+
+.strip-target-btn.active {
+    background-color: var(--color-accent);
+    color: var(--color-text-dark);
+    border-color: var(--color-accent);
+    font-weight: 700;
+}
+
 .print-workspace {
     flex: 1;
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 420px) minmax(260px, 360px);
     align-items: center;
     justify-content: center;
-    gap: 24px;
+    gap: clamp(32px, 5vw, 80px);
     padding: 16px;
     min-height: 0;
 }
 
 .print-easel {
-    flex: 0 1 420px;
+    width: 100%;
     min-width: 0;
     height: 100%;
     max-height: calc(100vh - 180px);
@@ -1006,7 +1080,11 @@ body {
 }
 
 .email-delivery-card {
-    flex: 0 1 360px;
+    grid-column: 2;
+    width: 100%;
+    min-width: 0;
+    align-self: center;
+    justify-self: end;
     padding: 20px;
     border: 1px solid var(--color-border-subtle);
     border-radius: var(--radius-md);
@@ -1569,6 +1647,7 @@ body,
     }
 
     .print-workspace {
+        display: flex;
         flex-direction: column;
         gap: 12px;
     }
@@ -1948,7 +2027,8 @@ body {
         justify-content: center;
     }
 
-    .print-easel #final-canvas {
+    .print-easel #final-canvas,
+    .print-easel #final-canvas-2 {
         max-height: 60vh;
         max-width: 100%;
     }
@@ -1959,7 +2039,8 @@ body {
         display: none;
     }
 
-    .print-easel #final-canvas {
+    .print-easel #final-canvas,
+    .print-easel #final-canvas-2 {
         max-height: 48vh;
     }
 }
@@ -1983,6 +2064,19 @@ body {
     }
 }
 
+body[data-page="landscape"] .gallery-cards-grid {
+    max-width: 1400px;
+    gap: 24px;
+}
+
+body[data-page="landscape"] .photo-card {
+    aspect-ratio: 16 / 9;
+}
+
+body[data-page="landscape"] .photo-card img {
+    object-fit: contain;
+}
+
 @media (hover: none) {
     .photo-card:hover,
     .tray-photo:hover,
@@ -1998,4 +2092,29 @@ body {
         transition: none !important;
         animation-duration: 0.01ms !important;
     }
+}
+
+body[data-page="landscape"] .viewport-card {
+    width: min(100%, 900px, calc((100vh - 225px) * 1.5));
+    height: auto;
+    aspect-ratio: 1.5;
+    max-width: none;
+    max-height: none;
+}
+
+body[data-page="landscape"] .guide-box {
+    width: auto;
+    height: auto;
+    max-width: none;
+    max-height: none;
+}
+
+body[data-page="landscape"] .strip-easel-inner {
+    width: auto;
+    align-self: center;
+}
+
+body[data-page="landscape"] .print-easel #final-canvas {
+    max-height: 80vh;
+    max-width: 100%;
 }

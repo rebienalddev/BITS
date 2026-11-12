@@ -4,6 +4,10 @@ const video = document.getElementById("camera-view");
 const canvas = document.getElementById("final-canvas");
 const canvasWrap3 = document.getElementById("canvas-wrapper-3");
 const ctx = canvas.getContext("2d");
+const canvas2 = document.getElementById("final-canvas-2");
+const ctx2 = canvas2 ? canvas2.getContext("2d") : null;
+let stripFrames = [null, null];
+let activeStripTarget = 0;
 const startBtn = document.getElementById("start-btn");
 const startBtnLabel = document.getElementById("start-btn-label");
 const downloadBtn = document.getElementById("download-btn");
@@ -63,8 +67,16 @@ let availableCameras = [];
 let currentCameraIndex = 0;
 let capturedPhotos = [];
 let selectedSlotIndices = [0, 1, 2];
+let strip2Slots = null;
+const activeSlots = () => {
+    if (activeStripTarget !== 1) return selectedSlotIndices;
+    if (!strip2Slots) strip2Slots = [...selectedSlotIndices];
+    return strip2Slots;
+};
 let activeReplacingSlot = 0;
 let currentFilter = "none";
+let photoFilters = [];
+let editingPhotoIndex = 0;
 let currentFrameImg = null;
 
 const DEFAULT_WINDOW_SET = [118, 122, 692, 742];
@@ -166,6 +178,30 @@ const FRAMES = [
             [117, 1665, 693, 2285],
         ],
     },
+    {
+        title: "Frame 13",
+        windows: [
+            [117, 122, 693, 742],
+            [117, 890, 693, 1510],
+            [117, 1665, 693, 2285],
+        ],
+    },
+    {
+        title: "Frame 14",
+        windows: [
+            [117, 122, 693, 742],
+            [117, 890, 693, 1510],
+            [117, 1665, 693, 2285],
+        ],
+    },
+    {
+        title: "Frame 15",
+        windows: [
+            [117, 122, 693, 742],
+            [117, 890, 693, 1510],
+            [117, 1665, 693, 2285],
+        ],
+    },
 ];
 
 FRAMES.forEach((frame, idx) => {
@@ -175,7 +211,7 @@ FRAMES.forEach((frame, idx) => {
 
 const customFrameWindowMap = Object.fromEntries(FRAMES.map((f) => [f.id, f.windows]));
 
-const EXCLUDED_FRAMES = new Set(["Frame 4", "Frame 8"]);
+const EXCLUDED_FRAMES = new Set(["Frame 1", "Frame 4", "Frame 8"]);
 
 function buildFrameSidebar() {
     const sidebar = document.getElementById("frame-sidebar");
@@ -193,6 +229,7 @@ function buildFrameSidebar() {
         sidebar.appendChild(img);
     });
     currentFrameImg = sidebar.querySelector(".frame-item");
+    stripFrames = [currentFrameImg, currentFrameImg];
 }
 
 buildFrameSidebar();
@@ -231,17 +268,25 @@ function goToStage(num) {
         if (canvasHolder && canvas.parentElement !== canvasHolder) {
             canvasHolder.insertBefore(canvas, canvasHolder.firstChild);
         }
+        if (canvas2 && canvas2.parentElement !== canvasHolder) {
+            canvasHolder.insertBefore(canvas2, canvas.firstChild);
+        }
         renderStudio();
         fitStripPreview();
     }
 
     if (num === 4) {
         const printEasel = document.getElementById("canvas-wrapper-4");
-        if (printEasel && canvas.parentElement !== printEasel) {
-            printEasel.appendChild(canvas);
+        if (printEasel) {
+            if (canvas.parentElement !== printEasel) printEasel.appendChild(canvas);
+            if (canvas2 && canvas2.parentElement !== printEasel) printEasel.appendChild(canvas2);
         }
         canvas.style.width = "";
         canvas.style.height = "";
+        if (canvas2) {
+            canvas2.style.width = "";
+            canvas2.style.height = "";
+        }
         if (canvasWrap3) canvasWrap3.style.width = "";
     }
 }
@@ -253,25 +298,34 @@ function fitStripPreview() {
 
     canvas.style.width = "";
     canvas.style.height = "";
+    if (ctx2) {
+        canvas2.style.width = "";
+        canvas2.style.height = "";
+    }
     canvasWrap3.style.width = "";
 
     const availW = easel.clientWidth;
     const availH = easel.clientHeight;
     if (!availW || !availH) return;
 
-    const ratio = canvas.width / canvas.height;
+    const stripGap = 4;
+    const totalRatio = (canvas.width * 2 + (ctx2 ? stripGap : 0)) / canvas.height;
     let cssH = availH;
-    let cssW = cssH * ratio;
+    let cssW = cssH * totalRatio;
     if (cssW > availW) {
         cssW = availW;
-        cssH = cssW / ratio;
+        cssH = cssW / totalRatio;
     }
     cssW = Math.floor(cssW);
     cssH = Math.floor(cssH);
 
     canvas.style.width = `${cssW}px`;
     canvas.style.height = `${cssH}px`;
-    canvasWrap3.style.width = `${cssW}px`;
+    if (ctx2) {
+        canvas2.style.width = `${cssW}px`;
+        canvas2.style.height = `${cssH}px`;
+    }
+    canvasWrap3.style.width = `${cssW * 2 + stripGap}px`;
 }
 
 async function enumerateCameras() {
@@ -296,17 +350,24 @@ async function startCameraById(deviceId) {
     updateCameraStatus("Connecting Camera...", "warning");
     if (cameraErrorBanner) cameraErrorBanner.style.display = "none";
     try {
-        const constraints = {
-            video: deviceId
-                ? {
-                      deviceId: { exact: deviceId },
-                      width: { ideal: 1920, min: 1280 },
-                      height: { ideal: 1080, min: 720 },
-                  }
-                : { width: { ideal: 1920, min: 1280 }, height: { ideal: 1080, min: 720 }, facingMode: "user" },
-            audio: false,
-        };
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        // Ideal-only constraints: never force a resolution a camera can't deliver.
+        const baseVideo = deviceId
+            ? { deviceId: { exact: deviceId }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+            : { width: { ideal: 1920 }, height: { ideal: 1080 }, facingMode: "user" };
+        let stream;
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ video: baseVideo, audio: false });
+        } catch (constrainedErr) {
+            // Camera can't do the preferred size: retry with no resolution constraints at all.
+            if (constrainedErr.name === "OverconstrainedError" || constrainedErr.name === "ConstraintNotSatisfiedError") {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: deviceId ? { deviceId: { exact: deviceId } } : { facingMode: "user" },
+                    audio: false,
+                });
+            } else {
+                throw constrainedErr;
+            }
+        }
         activeStream = stream;
         video.srcObject = stream;
         video.onloadedmetadata = () => {
@@ -323,6 +384,10 @@ async function startCameraById(deviceId) {
             message = "No camera device was detected on your computer.";
         } else if (err.name === "NotReadableError" || err.name === "TrackStartError") {
             message = "Your camera is currently in use by another application.";
+        } else if (err.name === "OverconstrainedError" || err.name === "ConstraintNotSatisfiedError") {
+            message = "The selected camera doesn't support the requested settings. Try another camera.";
+        } else if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+            message = "Please grant camera permissions in your browser to proceed.";
         }
         showCameraError(message);
     }
@@ -650,6 +715,13 @@ function refreshGalleryBadges() {
 
 btnRetake.onclick = () => {
     capturedPhotos = [];
+    photoFilters = [];
+    editingPhotoIndex = 0;
+    strip2Slots = null;
+    activeStripTarget = 0;
+    document.querySelectorAll("#strip-target-toggle .strip-target-btn").forEach((b) => {
+        b.classList.toggle("active", (parseInt(b.dataset.strip, 10) || 0) === 0);
+    });
     selectedSlotIndices = [0, 1, 2];
     resetCountdownButton();
     startBtn.disabled = false;
@@ -674,26 +746,43 @@ function renderStudio() {
 }
 
 function updateSlotOverlayUI() {
-    const frameId = currentFrameImg ? currentFrameImg.dataset.id : "pb-01";
-    const windows = customFrameWindowMap[frameId] || standardFrameWindows;
-    slotHotspots.forEach((hotspot, idx) => {
+    slotHotspots.forEach((hotspot) => {
+        const stripTarget = parseInt(hotspot.dataset.strip, 10) || 0;
+        const idx = parseInt(hotspot.dataset.slot, 10);
+        const frameImg = stripFrames[stripTarget] || currentFrameImg;
+        const frameId = frameImg ? frameImg.dataset.id : "pb-01";
+        const windows = customFrameWindowMap[frameId] || standardFrameWindows;
         const [x1, y1, x2, y2] = windows[idx];
-        const selected = idx === activeReplacingSlot;
-        hotspot.classList.toggle("active", selected);
+        const slots = stripTarget === 1 ? (strip2Slots ? strip2Slots : selectedSlotIndices) : selectedSlotIndices;
+        const isActive = stripTarget === activeStripTarget && idx === activeReplacingSlot;
+        hotspot.classList.toggle("active", isActive);
         hotspot.classList.remove("drop-target");
-        hotspot.setAttribute("aria-pressed", String(selected));
+        hotspot.setAttribute("aria-pressed", String(isActive));
         hotspot.setAttribute(
             "aria-label",
-            `Select slot ${idx + 1}, currently showing photo ${selectedSlotIndices[idx] + 1}`,
+            `Strip ${stripTarget + 1}, slot ${idx + 1}, currently showing photo ${slots[idx] + 1}`,
         );
-        hotspot.style.left = `${(x1 / 800) * 100}%`;
+        const stripOffset = stripTarget === 1 ? 50 : 0;
+        hotspot.style.left = `${stripOffset + (x1 / 800) * 50}%`;
         hotspot.style.top = `${(y1 / 2400) * 100}%`;
-        hotspot.style.width = `${((x2 - x1) / 800) * 100}%`;
+        hotspot.style.width = `${((x2 - x1) / 800) * 50}%`;
         hotspot.style.height = `${((y2 - y1) / 2400) * 100}%`;
     });
     if (activeSlotLabel) {
-        activeSlotLabel.innerText = `Slot ${activeReplacingSlot + 1} selected`;
+        activeSlotLabel.innerText = `Strip ${activeStripTarget + 1} · Slot ${activeReplacingSlot + 1} selected`;
     }
+}
+
+function setActiveStrip(target) {
+    activeStripTarget = target;
+    document.querySelectorAll("#strip-target-toggle .strip-target-btn").forEach((b) => {
+        b.classList.toggle("active", (parseInt(b.dataset.strip, 10) || 0) === target);
+    });
+    currentFrameImg = stripFrames[target] || currentFrameImg;
+    activeSlots();
+    refreshFrameSidebarHighlight();
+    updateSlotOverlayUI();
+    buildPhotoTray();
 }
 
 function selectTargetSlot(slotIndex) {
@@ -704,12 +793,13 @@ function selectTargetSlot(slotIndex) {
 
 function replaceSlotPhoto(slotIndex, photoIndex) {
     if (!Number.isInteger(photoIndex) || photoIndex < 0 || photoIndex >= capturedPhotos.length) return;
-    const previousPhoto = selectedSlotIndices[slotIndex];
-    const previousSlot = selectedSlotIndices.indexOf(photoIndex);
+    const slots = activeSlots();
+    const previousPhoto = slots[slotIndex];
+    const previousSlot = slots.indexOf(photoIndex);
     if (previousSlot >= 0 && previousSlot !== slotIndex) {
-        selectedSlotIndices[previousSlot] = previousPhoto;
+        slots[previousSlot] = previousPhoto;
     }
-    selectedSlotIndices[slotIndex] = photoIndex;
+    slots[slotIndex] = photoIndex;
     activeReplacingSlot = slotIndex;
     updateSlotOverlayUI();
     buildPhotoTray();
@@ -717,7 +807,10 @@ function replaceSlotPhoto(slotIndex, photoIndex) {
 }
 
 slotHotspots.forEach((hotspot) => {
-    hotspot.onclick = () => selectTargetSlot(parseInt(hotspot.dataset.slot, 10));
+    hotspot.onclick = () => {
+        setActiveStrip(parseInt(hotspot.dataset.strip, 10) || 0);
+        selectTargetSlot(parseInt(hotspot.dataset.slot, 10));
+    };
     hotspot.ondragover = (event) => {
         event.preventDefault();
         hotspot.classList.add("drop-target");
@@ -738,19 +831,22 @@ function buildPhotoTray() {
         item.draggable = true;
         item.className = "tray-photo";
         item.setAttribute("aria-label", `Use photo ${idx + 1} in slot ${activeReplacingSlot + 1}`);
-        if (selectedSlotIndices[activeReplacingSlot] === idx) {
+        const slots = activeSlots();
+        if (slots[activeReplacingSlot] === idx) {
             item.classList.add("active-in-slot");
-        } else if (selectedSlotIndices.includes(idx)) {
+        } else if (slots.includes(idx)) {
             item.classList.add("is-assigned");
         }
 
         const img = document.createElement("img");
         img.src = photoCanvas.toDataURL("image/jpeg", 0.85);
         img.alt = `Captured photo ${idx + 1}`;
+        img.style.filter = photoFilters[idx] || "none";
+        if (idx === editingPhotoIndex) item.classList.add("editing");
 
         const caption = document.createElement("span");
         caption.className = "tray-caption";
-        const assignment = selectedSlotIndices.indexOf(idx);
+        const assignment = slots.indexOf(idx);
         caption.innerText =
             assignment === activeReplacingSlot
                 ? `Photo ${idx + 1} · Current`
@@ -759,6 +855,18 @@ function buildPhotoTray() {
                   : `Photo ${idx + 1}`;
 
         item.onclick = () => replaceSlotPhoto(activeReplacingSlot, idx);
+
+        const editBtn = document.createElement("span");
+        editBtn.className = "tray-edit-btn";
+        editBtn.title = `Edit filters for photo ${idx + 1}`;
+        editBtn.innerHTML = "&#9998;";
+        editBtn.onclick = (event) => {
+            event.stopPropagation();
+            editingPhotoIndex = idx;
+            refreshFilterUI();
+            buildPhotoTray();
+        };
+        item.appendChild(editBtn);
         item.ondragstart = (event) => {
             event.dataTransfer.setData("text/plain", String(idx));
             event.dataTransfer.effectAllowed = "move";
@@ -786,75 +894,104 @@ document.querySelectorAll("#frame-sidebar .frame-item").forEach((img) => {
     choice.append(img, label);
 
     choice.onclick = () => {
-        document.querySelectorAll("#frame-sidebar .frame-choice").forEach((option) => {
-            const selected = option === choice;
-            option.classList.toggle("selected", selected);
-            option.setAttribute("aria-pressed", String(selected));
-            option.querySelector(".frame-item").classList.toggle("selected", selected);
-        });
+        stripFrames[activeStripTarget] = img;
         currentFrameImg = img;
+        refreshFrameSidebarHighlight();
         updateSlotOverlayUI();
         renderStrip();
     };
 });
 
+function refreshFrameSidebarHighlight() {
+    const activeImg = stripFrames[activeStripTarget];
+    document.querySelectorAll("#frame-sidebar .frame-choice").forEach((option) => {
+        const itemImg = option.querySelector(".frame-item");
+        const selected = itemImg === activeImg;
+        option.classList.toggle("selected", selected);
+        option.setAttribute("aria-pressed", String(selected));
+        option.querySelector(".frame-item").classList.toggle("selected", selected);
+    });
+}
+
+document.querySelectorAll("#strip-target-toggle .strip-target-btn").forEach((btn) => {
+    btn.onclick = () => setActiveStrip(parseInt(btn.dataset.strip, 10) || 0);
+});
+
 document.querySelectorAll(".filter-chip").forEach((chip) => {
     chip.onclick = () => {
-        document.querySelectorAll(".filter-chip").forEach((c) => c.classList.remove("active"));
-        chip.classList.add("active");
-        currentFilter = chip.dataset.filter;
+        photoFilters[editingPhotoIndex] = chip.dataset.filter;
+        refreshFilterUI();
+        buildPhotoTray();
         renderStrip();
     };
 });
 
+function refreshFilterUI() {
+    const active = photoFilters[editingPhotoIndex] || "none";
+    document.querySelectorAll(".filter-chip").forEach((c) => {
+        c.classList.toggle("active", c.dataset.filter === active);
+    });
+    const label = document.getElementById("filter-editing-label");
+    if (label) label.innerText = `Editing: Photo ${editingPhotoIndex + 1}`;
+}
+
 function renderStrip() {
     if (selectedSlotIndices.length !== 3 || capturedPhotos.length < 3) return;
 
-    const photosToRender = selectedSlotIndices.map((i) => capturedPhotos[i]);
     const w = 800;
     const h = 2400;
+
+    const renderSingleStrip = (targetCtx, frameImg, slots) => {
+        const photosToRender = slots.map((i) => capturedPhotos[i]);
+        targetCtx.filter = "none";
+        targetCtx.fillStyle = "#000000";
+        targetCtx.fillRect(0, 0, w, h);
+
+        const drawPhotosInWindows = (windows) => {
+            photosToRender.forEach((photo, index) => {
+                const [x1, y1, x2, y2] = windows[index];
+                const destW = x2 - x1;
+                const destH = y2 - y1;
+                const sourceRatio = photo.width / photo.height;
+                const destRatio = destW / destH;
+                let sx = 0,
+                    sy = 0,
+                    sw = photo.width,
+                    sh = photo.height;
+                if (sourceRatio > destRatio) {
+                    sw = sh * destRatio;
+                    sx = (photo.width - sw) / 2;
+                } else {
+                    sh = sw / destRatio;
+                    sy = (photo.height - sh) / 2;
+                }
+                targetCtx.save();
+                targetCtx.filter = currentFilter;
+                targetCtx.drawImage(photo, sx, sy, sw, sh, x1, y1, destW, destH);
+                targetCtx.restore();
+            });
+        };
+
+        const drawImageFit = (img) => {
+            if (!img) return;
+            targetCtx.drawImage(img, 0, 0, w, h);
+        };
+
+        const frameId = frameImg ? frameImg.dataset.id : "pb-01";
+        const windows = customFrameWindowMap[frameId] || standardFrameWindows;
+        drawPhotosInWindows(windows);
+        drawImageFit(frameImg);
+    };
+
     canvas.width = w;
     canvas.height = h;
+    renderSingleStrip(ctx, stripFrames[0] || currentFrameImg, selectedSlotIndices);
 
-    const frameId = currentFrameImg ? currentFrameImg.dataset.id : "pb-01";
-
-    ctx.filter = "none";
-    ctx.fillStyle = "#000000";
-    ctx.fillRect(0, 0, w, h);
-
-    const drawPhotosInWindows = (windows) => {
-        photosToRender.forEach((photo, index) => {
-            const [x1, y1, x2, y2] = windows[index];
-            const destW = x2 - x1;
-            const destH = y2 - y1;
-            const sourceRatio = photo.width / photo.height;
-            const destRatio = destW / destH;
-            let sx = 0,
-                sy = 0,
-                sw = photo.width,
-                sh = photo.height;
-            if (sourceRatio > destRatio) {
-                sw = sh * destRatio;
-                sx = (photo.width - sw) / 2;
-            } else {
-                sh = sw / destRatio;
-                sy = (photo.height - sh) / 2;
-            }
-            ctx.save();
-            ctx.filter = currentFilter;
-            ctx.drawImage(photo, sx, sy, sw, sh, x1, y1, destW, destH);
-            ctx.restore();
-        });
-    };
-
-    const drawImageFit = (img) => {
-        if (!img) return;
-        ctx.drawImage(img, 0, 0, w, h);
-    };
-
-    const windows = customFrameWindowMap[frameId] || standardFrameWindows;
-    drawPhotosInWindows(windows);
-    drawImageFit(currentFrameImg);
+    if (ctx2) {
+        canvas2.width = w;
+        canvas2.height = h;
+        renderSingleStrip(ctx2, stripFrames[1] || currentFrameImg, activeStripTarget === 1 ? activeSlots() : (strip2Slots || selectedSlotIndices));
+    }
 }
 
 btnBackToSelect.onclick = () => goToStage(2);
@@ -891,7 +1028,11 @@ function buildDoubleStripCanvas() {
     printCtx.fillRect(0, 0, printCanvas.width, printCanvas.height);
 
     printCtx.drawImage(canvas, 0, 0);
-    printCtx.drawImage(canvas, canvas.width + gap, 0);
+    if (ctx2) {
+        printCtx.drawImage(canvas2, canvas.width + gap, 0);
+    } else {
+        printCtx.drawImage(canvas, canvas.width + gap, 0);
+    }
 
     return printCanvas;
 }

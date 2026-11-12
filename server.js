@@ -6,6 +6,8 @@ const path = require("path");
 const fs = require("fs");
 const http = require("http");
 const https = require("https");
+const os = require("os");
+const crypto = require("crypto");
 
 const app = express();
 const gmailUser = process.env.GMAIL_USER?.trim();
@@ -98,18 +100,11 @@ app.post("/api/send-email", async (req, res) => {
             to: recipient,
             subject: "📸 Your BITS Photobooth Strip is Ready!",
             html: `
-                <div style="font-family: 'Helvetica Neue', Arial, sans-serif; background: #0d0d0d; color: #fff; padding: 40px; border-radius: 12px; max-width: 520px; margin: 0 auto;">
+                <div style="font-family: 'Helvetica Neue', Arial, sans-serif; background: #ffffff; color: #0d0d0d; padding: 40px; border-radius: 12px; max-width: 520px; margin: 0 auto;">
                     <div style="text-align: center; margin-bottom: 28px;">
                         <h1 style="font-size: 22px; font-weight: 800; color: #38bd9e; margin: 0 0 6px;">Your Photostrip is Here! </h1>
                         <p style="color: #888; font-size: 14px; margin: 0;">From BITS Photobooth - Cavite State University</p>
                     </div>
-                    <p style="color: #ccc; font-size: 14px; line-height: 1.7; margin: 0 0 24px;">
-                        Thank you for using BITS Photobooth! Your photostrip is attached, and so are the
-                        individual photos that make it up — keep them separately if you like.
-                    </p>
-                    <p style="color: #888; font-size: 12px; margin: 0; text-align: center;">
-                        Download and print your strip or keep it as a digital memory.
-                    </p>
                 </div>
             `,
             attachments: [
@@ -140,6 +135,48 @@ app.post("/api/send-email", async (req, res) => {
 let printQueue = [];
 let nextQueueSequence = 1;
 
+const AUTO_SAVE_DIR = path.join(os.homedir(), "Desktop", "TECHNOBITS");
+try {
+    fs.mkdirSync(AUTO_SAVE_DIR, { recursive: true });
+    console.log(`Auto-saving photostrips to: ${AUTO_SAVE_DIR}`);
+} catch (err) {
+    console.warn("Could not create auto-save folder:", err.message);
+}
+
+const autoSaveFingerprints = new Set();
+let autoSaveCounter = 0;
+
+function nextAutoSaveNumber() {
+    try {
+        const existing = fs.readdirSync(AUTO_SAVE_DIR)
+            .map((f) => parseInt(String(f).match(/^(\d+)\./)?.[1] || "0", 10))
+            .filter((n) => Number.isFinite(n) && n > 0);
+        return Math.max(autoSaveCounter, ...existing, 0) + 1;
+    } catch {
+        return autoSaveCounter + 1;
+    }
+}
+
+function autoSaveQueueImage(imageBase64, label) {
+    try {
+        const match = imageBase64.match(/^data:image\/(png|jpeg|jpg|webp);base64,([A-Za-z0-9+/]+={0,2})$/);
+        if (!match) return;
+        const buffer = Buffer.from(match[2], "base64");
+        const fingerprint = crypto.createHash("md5").update(match[2]).digest("hex");
+        if (autoSaveFingerprints.has(fingerprint)) return;
+        autoSaveFingerprints.add(fingerprint);
+        const number = nextAutoSaveNumber();
+        autoSaveCounter = number;
+        const filename = `${number}.${match[1] === "jpeg" || match[1] === "jpg" ? "jpg" : match[1]}`;
+        fs.writeFile(path.join(AUTO_SAVE_DIR, filename), buffer, (err) => {
+            if (err) console.warn("Auto-save failed:", err.message);
+            else console.log(`Saved photostrip: ${filename}`);
+        });
+    } catch (err) {
+        console.warn("Auto-save error:", err.message);
+    }
+}
+
 app.get("/api/queue", (req, res) => {
     res.json({ queue: printQueue });
 });
@@ -160,6 +197,7 @@ app.post("/api/queue", (req, res) => {
     };
 
     printQueue.push(item);
+    autoSaveQueueImage(imageBase64, item.ticketNumber);
     res.json({ success: true, item });
 });
 

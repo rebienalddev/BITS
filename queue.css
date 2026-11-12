@@ -149,7 +149,7 @@
 
         .queue-layout {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
             gap: 20px;
         }
 
@@ -259,9 +259,15 @@
         .card-foot {
             padding: 10px 14px;
             display: flex;
+            flex-wrap: wrap;
             gap: 8px;
             background: var(--color-bg-surface);
             border-top: 1px solid var(--color-border-subtle);
+        }
+
+        .card-foot .action-btn {
+            flex: 1 1 40%;
+            min-width: 0;
         }
 
         .action-btn {

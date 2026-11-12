@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BITS Photobooth Landscape - Cavite State University</title>
+
+    <meta name="php-email-endpoint" content="">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body data-page="landscape">
+
+<div class="app-shell">
+
+    <header class="app-header">
+        <div class="brand-group">
+            <div class="brand-logo-frame">
+                <img src="assets/BITSLOGO.jpg" alt="BITS Logo" class="brand-logo">
+            </div>
+            <div class="brand-text">
+                <span class="brand-name">BITS Photobooth</span>
+                <span class="brand-subtext">Cavite State University</span>
+            </div>
+        </div>
+
+        <nav class="stepper-nav" aria-label="Photobooth workflow steps">
+            <div class="step-node active" id="step-node-1">
+                <div class="step-indicator">
+                    <span class="step-num">1</span>
+                    <span class="step-check">&#10003;</span>
+                </div>
+                <span class="step-label">Capture</span>
+            </div>
+            <div class="step-divider" aria-hidden="true"></div>
+
+            <div class="step-node" id="step-node-2">
+                <div class="step-indicator">
+                    <span class="step-num">2</span>
+                    <span class="step-check">&#10003;</span>
+                </div>
+                <span class="step-label">Select</span>
+            </div>
+            <div class="step-divider" aria-hidden="true"></div>
+
+            <div class="step-node" id="step-node-3">
+                <div class="step-indicator">
+                    <span class="step-num">3</span>
+                    <span class="step-check">&#10003;</span>
+                </div>
+                <span class="step-label">Studio</span>
+            </div>
+            <div class="step-divider" aria-hidden="true"></div>
+
+            <div class="step-node" id="step-node-4">
+                <div class="step-indicator">
+                    <span class="step-num">4</span>
+                    <span class="step-check">&#10003;</span>
+                </div>
+                <span class="step-label">Print</span>
+            </div>
+        </nav>
+
+        <div class="header-action-group">
+            <div class="device-pill" id="camera-status-pill">
+                <span class="pulse-dot"></span>
+                <span class="pill-label" id="camera-status-text">Camera Ready</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="app-content">
+
+        <section class="stage-view active" id="view-capture" aria-labelledby="heading-capture">
+            <div class="stage-intro">
+                <h1 class="stage-title" id="heading-capture">Strike Your Pose</h1>
+                <p class="stage-subtitle">Click once for each photo. Capture three photos to continue.</p>
+            </div>
+
+            <div class="capture-workspace">
+                <div class="viewport-card" id="camera-card">
+
+                    <video id="camera-view" autoplay playsinline muted></video>
+
+                    <div id="crop-guide" class="crop-guide-container">
+                        <div class="guide-box">
+                            <span class="corner-mark top-left"></span>
+                            <span class="corner-mark top-right"></span>
+                            <span class="corner-mark bottom-left"></span>
+                            <span class="corner-mark bottom-right"></span>
+                            <div class="center-crosshair"></div>
+                        </div>
+                    </div>
+
+                    <div class="hud-layer">
+                        <div class="hud-badge session-badge">
+                            <span class="rec-indicator"></span>
+                            <span>LIVE FEED</span>
+                        </div>
+                        <div class="hud-badge counter-badge" id="hud-shot-counter">
+                            <span>0 of 3 Captured</span>
+                        </div>
+                        <div class="cam-dropdown-wrap" id="cam-dropdown-wrap">
+                            <button type="button" id="switch-camera-btn" class="hud-camera-switch" title="Select Camera" aria-label="Select Camera" aria-expanded="false" aria-haspopup="listbox">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                                    <circle cx="12" cy="13" r="4"/>
+                                </svg>
+                                <span id="switch-camera-label">Camera</span>
+                                <svg class="cam-chevron" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="6 9 12 15 18 9"/>
+                                </svg>
+                            </button>
+                            <ul class="cam-dropdown-menu" id="cam-dropdown-menu" role="listbox" aria-label="Available cameras"></ul>
+                        </div>
+                    </div>
+
+                    <div id="camera-error-banner" class="camera-fallback" style="display:none;">
+                        <div class="fallback-icon">&#9888;</div>
+                        <h2 class="fallback-title">Camera Access Required</h2>
+                        <p class="fallback-desc" id="camera-error-msg">Please grant browser permissions to your webcam to start your photobooth session.</p>
+                        <button type="button" class="btn btn-secondary btn-sm" id="btn-retry-camera">Retry Connection</button>
+                    </div>
+
+                    <div id="countdown-overlay" aria-live="assertive"></div>
+                </div>
+            </div>
+
+            <div class="stage-toolbar">
+                <button type="button" id="start-btn" class="btn btn-primary btn-capture">
+                    <svg class="btn-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M4 4h3l2-2h6l2 2h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm8 3a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6z"/>
+                    </svg>
+                    <span id="start-btn-label">Capture Photo 1 of 3</span>
+                </button>
+                <button type="button" id="countdown-btn" class="btn btn-secondary btn-icon-only" aria-pressed="false" title="Countdown timer for each capture" aria-label="Toggle countdown timer">
+                    <svg class="btn-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="13" r="8"/>
+                        <path d="M12 9v4l2.5 2.5"/>
+                        <path d="M9 2h6"/>
+                    </svg>
+                </button>
+                <button type="button" id="mirror-toggle" class="btn btn-secondary btn-icon-only" aria-pressed="true" title="Toggle mirror preview" aria-label="Toggle mirror preview">
+                    <svg class="btn-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 3v18"/>
+                        <path d="M4 8c-1.5 2.5-1.5 5.5 0 8"/>
+                        <path d="M20 8c1.5 2.5 1.5 5.5 0 8"/>
+                        <path d="M8 5v14M16 5v14"/>
+                    </svg>
+                </button>
+            </div>
+        </section>
+
+        <section class="stage-view" id="view-select" aria-labelledby="heading-select">
+            <div class="stage-intro">
+                <h1 class="stage-title" id="heading-select">Choose Your Photo</h1>
+                <p class="stage-subtitle">Click the one photo you want on your big landscape frame.</p>
+            </div>
+
+            <div class="select-workspace">
+                <div id="selection-grid" class="gallery-cards-grid"></div>
+            </div>
+
+            <div class="stage-toolbar">
+                <button type="button" id="btn-retake" class="btn btn-secondary">
+                    <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4V1L8 5l4 4V6a6 6 0 1 1-6 6H4a8 8 0 1 0 8-8z"/></svg>
+                    Retake All Photos
+                </button>
+                <button type="button" id="confirm-selection-btn" class="btn btn-primary">
+                    <span>Continue to Studio</span>
+                    <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M5 13h11.86l-5.43 5.43 1.42 1.42L21.14 12l-8.29-7.85-1.42 1.42L16.86 11H5v2z"/></svg>
+                </button>
+            </div>
+        </section>
+
+        <section class="stage-view" id="view-studio" aria-labelledby="heading-studio">
+            <div class="studio-layout">
+
+                <div class="studio-canvas-column">
+                    <div class="studio-preview-header">
+                        <strong>Strip preview</strong>
+                        <span>One photo, full frame</span>
+                    </div>
+                    <div class="strip-easel">
+                        <div class="strip-easel-inner" id="canvas-wrapper-3">
+                            <canvas id="final-canvas"></canvas>
+                            <div class="slot-overlay-map" id="slot-overlay-layer" aria-label="Click a photo area to choose a slot">
+                                <button type="button" class="slot-hotspot active" data-slot="0" aria-label="Select slot 1">
+                                    <span class="hotspot-badge">Slot 1</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <aside class="studio-tool-column">
+                    <div class="studio-sidebar-heading">
+                        <h1>Customize your strip</h1>
+                        <p>Your changes appear in the preview.</p>
+                    </div>
+
+                    <div class="tool-panel">
+                        <div class="panel-header">
+                            <div>
+                                <h2 class="panel-title">Choose photos for your strip</h2>
+                                <p class="panel-desc">Click a photo area on the preview, then choose a photo below or drag it onto a slot.</p>
+                            </div>
+                            <span class="active-slot-pill" id="active-slot-label">Slot 1</span>
+                        </div>
+                        <div class="tray-pool-grid" id="photo-pool"></div>
+                    </div>
+
+                    <div class="tool-panel">
+                        <div class="panel-header">
+                            <div>
+                                <h2 class="panel-title">Frame</h2>
+                                <p class="panel-desc">Choose a design for your strip.</p>
+                            </div>
+                        </div>
+
+                        <div class="frame-scroll-rack" id="frame-sidebar"></div>
+                    </div>
+
+                    <div class="tool-panel">
+                        <div class="panel-header">
+                            <div>
+                                <h2 class="panel-title">Photo Filter</h2>
+                                <p class="panel-desc">Optional; applies to all photos.</p>
+                            </div>
+                        </div>
+                        <div class="filter-tab-grid" id="filter-container">
+                            <button type="button" class="filter-chip active" data-filter="none">Natural</button>
+                            <button type="button" class="filter-chip" data-filter="grayscale(1) contrast(1.25)">Monochrome</button>
+                            <button type="button" class="filter-chip" data-filter="sepia(0.55) brightness(1.08)">Vintage</button>
+                            <button type="button" class="filter-chip" data-filter="contrast(1.4) saturate(1.4)">Vivid</button>
+                            <button type="button" class="filter-chip" data-filter="hue-rotate(180deg) brightness(1.15)">Cyber</button>
+                            <button type="button" class="filter-chip" data-filter="brightness(1.25) contrast(0.9) saturate(0.85)">Soft Glow</button>
+                        </div>
+                    </div>
+                </aside>
+            </div>
+
+            <div class="stage-toolbar">
+                <button type="button" id="btn-back-to-select" class="btn btn-secondary">
+                    <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 11H7.14l5.43-5.43-1.42-1.42L2.86 12l8.29 7.85 1.42-1.42L7.14 13H19v-2z"/></svg>
+                    Back to Select
+                </button>
+                <button type="button" id="btn-next-3" class="btn btn-primary">
+                    <span>Review & Print</span>
+                    <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M5 13h11.86l-5.43 5.43 1.42 1.42L21.14 12l-8.29-7.85-1.42 1.42L16.86 11H5v2z"/></svg>
+                </button>
+            </div>
+        </section>
+
+        <section class="stage-view" id="view-print" aria-labelledby="heading-print">
+            <div class="stage-intro">
+                <h1 class="stage-title" id="heading-print">Your Photostrip Is Ready</h1>
+                <p class="stage-subtitle">Download your strip or send it straight to your email.</p>
+            </div>
+
+            <div class="print-workspace">
+                <div class="print-easel" id="canvas-wrapper-4">
+
+                </div>
+
+                <div class="email-delivery-card">
+                    <div class="email-card-header">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                        <span>Send to Email</span>
+                    </div>
+                    <p class="email-card-desc">We'll deliver your photostrip as a PNG attachment, plus the individual photos that make it up.</p>
+                    <div class="email-input-row">
+                        <input type="email" id="email-input" class="email-field" placeholder="your@email.com" autocomplete="email" aria-label="Email address" required />
+                        <button type="button" id="send-email-btn" class="btn btn-accent">
+                            <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21 23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                            <span id="send-email-label">Send</span>
+                        </button>
+                    </div>
+                    <div class="email-status" id="email-status" role="status" aria-live="polite"></div>
+                </div>
+            </div>
+
+            <div class="stage-toolbar">
+                <button type="button" id="btn-back-to-studio" class="btn btn-secondary">
+                    <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                    Edit Strip
+                </button>
+                <button type="button" id="download-btn" class="btn btn-primary">
+                    <svg class="btn-icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                    <span>Download Strip (PNG)</span>
+                </button>
+                <button type="button" id="btn-restart" class="btn btn-secondary">
+                    New Session
+                </button>
+            </div>
+        </section>
+    </main>
+
+</div>
+
+<div id="flash" aria-hidden="true"></div>
+
+<script src="landscape.js"></script>
+</body>
+</html>

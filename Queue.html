@@ -1,91 +1,101 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BITS Photobooth - Print Queue</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
-    
-    <link rel="stylesheet" href="queue.css">
-</head>
-<body>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>BITS Photobooth - Print Queue</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap"
+            rel="stylesheet"
+        />
+        <link rel="stylesheet" href="style.css" />
 
-<div class="queue-shell">
-    <header class="app-header">
-        <div class="brand-group">
-            <div class="brand-logo-frame">
-                <img src="assets/BITSLOGO.jpg" alt="BITS Logo" class="brand-logo">
-            </div>
-            <div class="brand-text">
-                <span class="brand-name">BITS Photobooth</span>
-                <span class="brand-subtext">Print Queue Station</span>
+        <link rel="stylesheet" href="queue.css" />
+    </head>
+    <body>
+        <div class="queue-shell">
+            <header class="app-header">
+                <div class="brand-group">
+                    <div class="brand-logo-frame">
+                        <img src="assets/BITSLOGO.jpg" alt="BITS Logo" class="brand-logo" />
+                    </div>
+                    <div class="brand-text">
+                        <span class="brand-name">BITS Photobooth</span>
+                        <span class="brand-subtext">Print Queue Station</span>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px">
+                    <button id="btn-select-a4" class="queue-nav-btn">Portrait</button>
+                    <button id="btn-select-a4-landscape" class="queue-nav-btn">Landscape</button>
+                    <button id="btn-select-a4-combined" class="queue-nav-btn">Combined</button>
+                    <button id="btn-sync" class="queue-nav-btn">Sync Queue</button>
+                </div>
+            </header>
+
+            <main class="queue-main">
+                <div class="queue-header-section">
+                    <div class="queue-title-area">
+                        <h1>QUEUE</h1>
+                    </div>
+                    <p class="select-hint" id="select-hint" style="display: none">
+                        Select exactly 4 portrait strips. They will be compiled onto one A4 sheet (2x2 grid).
+                    </p>
+                    <p class="select-hint" id="select-hint-landscape" style="display: none">
+                        Select exactly 2 landscape strips. They will be stacked on one A4 sheet (2 rows).
+                    </p>
+                    <p class="select-hint" id="select-hint-combined" style="display: none">
+                        Select exactly 2 portrait strips and 1 landscape photo. They will be arranged on one A4 sheet (2
+                        portrait strips on top, 1 landscape centered below).
+                    </p>
+                </div>
+
+                <section class="metrics-strip">
+                    <div class="metric-card">
+                        <span class="metric-label">Pending Print</span>
+                        <span class="metric-value" id="stat-pending">0</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-label">Finished</span>
+                        <span class="metric-value" id="stat-printed">0</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-label">Discarded</span>
+                        <span class="metric-value" id="stat-discarded">0</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-label">Total Strips</span>
+                        <span class="metric-value" id="stat-total">0</span>
+                    </div>
+                </section>
+
+                <section class="filter-bar">
+                    <div class="filter-group">
+                        <button class="tab-btn active" data-filter="pending">Pending</button>
+                        <button class="tab-btn" data-filter="all">All</button>
+                        <button class="tab-btn" data-filter="printed">Printed</button>
+                        <button class="tab-btn" data-filter="discarded">Discarded</button>
+                    </div>
+                </section>
+
+                <section class="queue-layout" id="queue-grid"></section>
+            </main>
+        </div>
+
+        <div class="a4-action-bar" id="a4-action-bar">
+            <span class="a4-count" id="a4-count">0/4 selected</span>
+            <button class="btn-a4-clear" id="btn-a4-clear">Clear</button>
+            <button class="btn-print-a4" id="btn-print-a4">Compile &amp; Print A4</button>
+        </div>
+
+        <div class="preview-dialog" id="preview-modal">
+            <div class="dialog-body">
+                <button class="dialog-close" id="modal-close">&times;</button>
+                <img id="modal-preview-img" src="" alt="Photostrip" />
             </div>
         </div>
-        <div style="display: flex; align-items: center; gap: 10px;">
-            <button id="btn-select-a4" class="queue-nav-btn">Select 4 for A4</button>
-            <button id="btn-sync" class="queue-nav-btn">Sync Queue</button>
-            <a href="index.html" class="queue-nav-btn">Booth Camera</a>
-        </div>
-    </header>
 
-    <main class="queue-main">
-        <div class="queue-header-section">
-        <div class="queue-title-area">
-            <h1>QUEUE</h1>
-        </div>
-        <p class="select-hint" id="select-hint" style="display:none;">Click up to 4 photostrips. When 4 are selected, compile them onto one A4 sheet (2x2) with gaps.</p>
-    </div>
-
-    <section class="metrics-strip">
-            <div class="metric-card">
-                <span class="metric-label">Pending Print</span>
-                <span class="metric-value" id="stat-pending">0</span>
-            </div>
-            <div class="metric-card">
-                <span class="metric-label">Printed</span>
-                <span class="metric-value" id="stat-printed">0</span>
-            </div>
-            <div class="metric-card">
-                <span class="metric-label">Discarded</span>
-                <span class="metric-value" id="stat-discarded">0</span>
-            </div>
-            <div class="metric-card">
-                <span class="metric-label">Total Strips</span>
-                <span class="metric-value" id="stat-total">0</span>
-            </div>
-        </section>
-
-        <section class="filter-bar">
-            <div class="filter-group">
-                <button class="tab-btn active" data-filter="pending">Pending</button>
-                <button class="tab-btn" data-filter="all">All</button>
-                <button class="tab-btn" data-filter="printed">Printed</button>
-                <button class="tab-btn" data-filter="discarded">Discarded</button>
-            </div>
-        </section>
-
-        <section class="queue-layout" id="queue-grid">
-
-        </section>
-    </main>
-</div>
-
-<div class="a4-action-bar" id="a4-action-bar">
-    <span class="a4-count" id="a4-count">0/4 selected</span>
-    <button class="btn-a4-clear" id="btn-a4-clear">Clear</button>
-    <button class="btn-print-a4" id="btn-print-a4">Compile &amp; Print A4</button>
-</div>
-
-<div class="preview-dialog" id="preview-modal">
-    <div class="dialog-body">
-        <button class="dialog-close" id="modal-close">&times;</button>
-        <img id="modal-preview-img" src="" alt="Photostrip">
-    </div>
-</div>
-
-<script src="queue.js"></script>
-</body>
+        <script src="queue.js"></script>
+    </body>
 </html>
