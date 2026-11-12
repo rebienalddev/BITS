@@ -1060,11 +1060,9 @@ body {
 
 .print-workspace {
     flex: 1;
-    display: grid;
-    grid-template-columns: minmax(0, 420px) minmax(260px, 360px);
+    display: flex;
     align-items: center;
     justify-content: center;
-    gap: clamp(32px, 5vw, 80px);
     padding: 16px;
     min-height: 0;
 }
@@ -1079,59 +1077,11 @@ body {
     justify-content: center;
 }
 
-.email-delivery-card {
-    grid-column: 2;
-    width: 100%;
-    min-width: 0;
-    align-self: center;
-    justify-self: end;
-    padding: 20px;
-    border: 1px solid var(--color-border-subtle);
-    border-radius: var(--radius-md);
-    background-color: var(--color-bg-surface);
-}
 
-.email-card-header {
-    display: flex;
-    align-items: center;
-    gap: 9px;
-    font-size: 14px;
-    font-weight: 700;
-}
 
-.email-card-header svg {
-    color: var(--color-accent);
-}
 
-.email-card-desc {
-    margin-top: 8px;
-    color: var(--color-text-secondary);
-    font-size: 12px;
-    line-height: 1.5;
-}
 
-.email-input-row {
-    display: flex;
-    gap: 8px;
-    margin-top: 16px;
-}
 
-.email-field {
-    flex: 1;
-    min-width: 0;
-    height: 44px;
-    padding: 0 12px;
-    border: 1px solid var(--color-border-medium);
-    border-radius: var(--radius-sm);
-    background: var(--color-bg-base);
-    color: var(--color-text-primary);
-    font: inherit;
-}
-
-.email-field:focus {
-    border-color: var(--color-accent);
-    outline: 2px solid var(--color-accent-subtle);
-}
 
 .btn-accent {
     flex-shrink: 0;
@@ -1144,19 +1094,8 @@ body {
     opacity: 0.65;
 }
 
-.email-status {
-    min-height: 1.4em;
-    margin-top: 8px;
-    font-size: 13px;
-}
 
-.email-status.success {
-    color: var(--color-accent);
-}
 
-.email-status.error {
-    color: #ff6b6b;
-}
 
 #flash {
     position: fixed;
@@ -1658,11 +1597,6 @@ body,
         max-height: none;
     }
 
-    .email-delivery-card {
-        flex: 0 0 auto;
-        width: min(100%, 420px);
-        padding: 12px 16px;
-    }
 
     .studio-canvas-column {
         height: 280px;
@@ -2000,14 +1934,6 @@ body {
         min-height: 0;
         padding: 6px 8px;
         font-size: 10px;
-    }
-
-    .email-input-row {
-        flex-direction: column;
-    }
-
-    .email-input-row .btn-accent {
-        width: 100%;
     }
 }
 

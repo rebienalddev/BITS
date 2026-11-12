@@ -82,9 +82,24 @@ const FRAMES = [
         windows: DEFAULT_WINDOW_SET,
     },
     {
-        title: "Placeholder",
-        src: "LandscapePlaceHolder.png",
-        windows: PLACEHOLDER_WINDOW_SET,
+        title: "Landscape Frame 2",
+        src: "LandscapeFrame2.png",
+        windows: DEFAULT_WINDOW_SET,
+    },
+    {
+        title: "Landscape Frame 3",
+        src: "LandscapeFrame3.png",
+        windows: DEFAULT_WINDOW_SET,
+    },
+    {
+        title: "Landscape Frame 4",
+        src: "LandscapeFrame4.png",
+        windows: DEFAULT_WINDOW_SET,
+    },
+    {
+        title: "Landscape Frame 5",
+        src: "LandscapeFrame5.png",
+        windows: DEFAULT_WINDOW_SET,
     },
 ];
 

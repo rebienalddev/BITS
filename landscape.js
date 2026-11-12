@@ -7,26 +7,6 @@ const ctx = canvas.getContext("2d");
 const startBtn = document.getElementById("start-btn");
 const startBtnLabel = document.getElementById("start-btn-label");
 const downloadBtn = document.getElementById("download-btn");
-const sendEmailBtn = document.getElementById("send-email-btn");
-const sendEmailLabel = document.getElementById("send-email-label");
-const emailInput = document.getElementById("email-input");
-const emailStatus = document.getElementById("email-status");
-const vercelApiOrigin = "https://bits-photobooth.vercel.app";
-
-const phpEmailUrl = document.querySelector('meta[name="php-email-endpoint"]')?.content?.trim() || "";
-const emailApiUrl = (() => {
-    if (window.location.host === "rebienalddev.github.io") {
-        return new URL("/api/send-email", vercelApiOrigin).toString();
-    }
-    const apiUrl = new URL("/api/send-email", window.location.origin);
-    if (
-        window.location.port === "5500" ||
-        (["localhost", "127.0.0.1"].includes(window.location.hostname) && window.location.port !== "3000")
-    ) {
-        apiUrl.port = "3000";
-    }
-    return apiUrl.toString();
-})();
 const flashEl = document.getElementById("flash");
 const cropGuide = document.getElementById("crop-guide");
 const hudShotCounter = document.getElementById("hud-shot-counter");
@@ -827,8 +807,6 @@ function buildDoubleStripDataUrl() {
     return buildDoubleStripCanvas().toDataURL("image/png");
 }
 
-const PROD_STRIP_BUDGET_CHARS = 2_000_000;
-const PROD_RAW_TOTAL_BUDGET_CHARS = 2_200_000;
 
 function compressCanvasToBudget(canvas, budgetChars, startQuality, floorQuality, floorWidth) {
     let quality = startQuality;
@@ -851,82 +829,7 @@ function compressCanvasToBudget(canvas, budgetChars, startQuality, floorQuality,
     }
 }
 
-function buildEmailImage() {
-    const isProd = !["localhost", "127.0.0.1"].includes(window.location.hostname);
-    if (!isProd) return buildDoubleStripDataUrl();
 
-    const source = buildDoubleStripCanvas();
-    return compressCanvasToBudget(source, PROD_STRIP_BUDGET_CHARS, 0.92, 0.8, 300);
-}
-
-function buildRawImagePayloads() {
-    const isProd = !["localhost", "127.0.0.1"].includes(window.location.hostname);
-    const totalBudget = isProd ? PROD_RAW_TOTAL_BUDGET_CHARS : 8_000_000;
-    const payloads = [];
-    let remaining = totalBudget;
-    for (let i = 0; i < capturedPhotos.length; i++) {
-        const photosLeft = capturedPhotos.length - i;
-        const budget = Math.max(120_000, Math.floor(remaining / photosLeft));
-        const dataUrl = compressCanvasToBudget(capturedPhotos[i], budget, 0.88, 0.6, 480);
-        payloads.push(dataUrl);
-        remaining -= dataUrl.length;
-    }
-    return payloads;
-}
-
-sendEmailBtn.onclick = async () => {
-    if (!emailInput.reportValidity()) return;
-
-    sendEmailBtn.disabled = true;
-    sendEmailLabel.innerText = "Sending...";
-    emailStatus.innerText = "";
-    emailStatus.classList.remove("success", "error");
-
-    try {
-
-        const imageBase64 = phpEmailUrl
-            ? buildDoubleStripDataUrl()
-            : await buildEmailImage();
-        const rawImagesBase64 = buildRawImagePayloads();
-        const response = await fetch(phpEmailUrl || emailApiUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: emailInput.value, imageBase64, rawImagesBase64 }),
-        });
-        const responseBody = await response.text();
-        let result;
-        try {
-            result = JSON.parse(responseBody);
-        } catch {
-            if (response.status === 404) {
-                throw new Error("The email service is unavailable. Start the app with npm start and try again.");
-            }
-            if (response.status === 413) {
-                throw new Error("The photostrip is too large to email. Please try again with a smaller image.");
-            }
-            throw new Error(
-                `The email service returned an unexpected response (HTTP ${response.status}). Check that the app server is running, then try again.`,
-            );
-        }
-
-        if (!response.ok) {
-            throw new Error(result.error || "Failed to send your photostrip.");
-        }
-        if (!result.success) {
-            throw new Error("The server could not confirm delivery. Please try again.");
-        }
-
-        emailStatus.innerText = "Your photostrip has been sent to your email.";
-        emailStatus.classList.add("success");
-    } catch (error) {
-        console.error("Photostrip email failed:", error);
-        emailStatus.innerText = error.message || "Unable to send your photostrip. Please try again.";
-        emailStatus.classList.add("error");
-    } finally {
-        sendEmailBtn.disabled = false;
-        sendEmailLabel.innerText = "Send";
-    }
-};
 
 const PHOTO_QUEUE_STORAGE_KEY = "bits_photobooth_captured_queue";
 
